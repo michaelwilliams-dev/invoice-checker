@@ -55,11 +55,14 @@ Context:
 - CIS rate: ${flags.cisRate}%
 - Reason: ${vatDecision.reason}
 
-Check:
-1. Whether VAT and DRC treatment are correct.
-2. Whether CIS is calculated properly on the labour element.
-3. Whether required wording is present or missing.
-4. Provide corrected wording and compliance notes.
+Please return a JSON object with the following structure:
+{
+  "vat_check": "...",
+  "cis_check": "...",
+  "required_wording": "...",
+  "corrected_invoice": "...",
+  "summary": "..."
+}
 
 Invoice text:
 ${text}
@@ -67,8 +70,15 @@ ${text}
 
   const res = await openai.chat.completions.create({
     model: "gpt-4o-mini",
+    response_format: { type: "json_object" },
     messages: [{ role: "user", content: prompt }]
   });
 
-  return res.choices[0].message.content;
+  try {
+    const result = JSON.parse(res.choices[0].message.content);
+    return result;
+  } catch (err) {
+    console.error("⚠️ JSON parse error:", err.message);
+    return { error: "Invalid JSON returned from AI" };
+  }
 }
