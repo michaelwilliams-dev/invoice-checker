@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: invoice-checker
+    env: node
+    rootDir: .
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: INTERNAL_API_KEY
+        sync: false
+      - key: NODE_VERSION
+        value: 20.10.0
