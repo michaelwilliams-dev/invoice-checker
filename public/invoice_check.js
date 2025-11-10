@@ -1,18 +1,21 @@
 /**
- * AIVS Invoice Compliance Checker · Front-End Logic (stable drag-and-drop)
- * ISO Timestamp: 2025-11-10T19:25:00Z
+ * AIVS Invoice Compliance Checker · Frontend Logic
+ * ISO Timestamp: 2025-11-09T18:50:00Z
  * Author: AIVS Software Limited
+ * Brand Colour: #4e65ac
+ * Description:
+ * Manages the drag-and-drop upload interface and sends
+ * files + user flags to the /check_invoice backend route.
  */
 
 Dropzone.options.invoiceDrop = {
   maxFilesize: 10,
   acceptedFiles: ".pdf,.jpg,.png,.json",
-
   init: function () {
     const dz = this;
     const actorsDiv = document.getElementById("actors");
 
-    // --- Create "Clear Results" button --------------------------------
+    // Create Clear button (hidden by default)
     const clearBtn = document.createElement("button");
     clearBtn.textContent = "Clear Results";
     clearBtn.id = "clearResultsBtn";
@@ -29,42 +32,55 @@ Dropzone.options.invoiceDrop = {
     `;
     actorsDiv.insertAdjacentElement("afterend", clearBtn);
 
+    // Handle Clear button click
     clearBtn.addEventListener("click", () => {
-      dz.removeAllFiles(true);
       actorsDiv.innerHTML = "";
-      clearBtn.style.display = "none";
+      dz.removeAllFiles(true); // clear Dropzone
+      clearBtn.style.display = "none"; // hide again
     });
 
-    // --- Attach form metadata -----------------------------------------
-    this.on("sending", (file, xhr, formData) => {
+    this.on("sending", function (file, xhr, formData) {
       formData.append("vatCategory", document.getElementById("vatCategory").value);
       formData.append("endUserConfirmed", document.getElementById("endUserConfirmed").value);
       formData.append("cisRate", document.getElementById("cisRate").value);
     });
 
-    // --- Show server reply --------------------------------------------
     this.on("success", (file, response) => {
-      const reply = typeof response === "string" ? JSON.parse(response) : response;
-      const ai = reply.aiReply || {};
+      const v = response.aiReply;
+      let formattedAIReply = "";
+
+      if (typeof v === "object" && v !== null) {
+        formattedAIReply = `
+          <div class="ai-section">
+            <h3>VAT / DRC Check</h3><p>${v.vat_check || "—"}</p>
+          </div>
+          <div class="ai-section">
+            <h3>CIS Check</h3><p>${v.cis_check || "—"}</p>
+          </div>
+          <div class="ai-section">
+            <h3>Required Wording</h3><p>${v.required_wording || "—"}</p>
+          </div>
+          <div class="ai-section">
+            <h3>Corrected Invoice</h3><div>${v.corrected_invoice || "—"}</div>
+          </div>
+          <div class="ai-section">
+            <h3>Summary</h3><p>${v.summary || "—"}</p>
+          </div>`;
+      } else {
+        formattedAIReply = v || "No AI response.";
+      }
 
       actorsDiv.innerHTML = `
         <div class="actor"><span>Uploader:</span> ${file.name}</div>
-        <div class="actor"><span>Parser:</span> ${reply.parserNote}</div>
-        <div class="actor"><span>AI Validator:</span><br>
-          <p><b>VAT / DRC Check:</b> ${ai.vat_check}</p>
-          <p><b>CIS Check:</b> ${ai.cis_check}</p>
-          <p><b>Required Wording:</b> ${ai.required_wording}</p>
-          <p><b>Summary:</b> ${ai.summary}</p>
-        </div>
-        <div class="actor"><span>Response Time:</span> ${reply.timestamp}</div>
+        <div class="actor"><span>Parser:</span> ${response.parserNote}</div>
+        <div class="actor"><span>AI Validator:</span><br>${formattedAIReply}</div>
+        <div class="actor"><span>Response Time:</span> ${response.timestamp || "—"}</div>
       `;
+
+      // Show Clear button now that results exist
       clearBtn.style.display = "inline-block";
     });
 
-    // --- Handle errors ------------------------------------------------
-    this.on("error", (file, err) => {
-      console.error("❌ Upload failed:", err);
-      alert("Upload failed – check console for details.");
-    });
+    this.on("error", (file, err) => alert("Upload failed: " + err));
   },
 };
