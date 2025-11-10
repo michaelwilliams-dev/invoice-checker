@@ -1,21 +1,9 @@
-/**
- * AIVS Invoice Compliance Checker · Backend Route
- * ISO Timestamp: 2025-11-10T15:05:00Z
- * Author: AIVS Software Limited
- * Description:
- * Handles Dropzone uploads and returns a sample AI-style response.
- */
-
 import express from "express";
 import multer from "multer";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
-// ------------------------------------------------------------
-//  POST /check_invoice
-//  Handles file uploads + form fields from Dropzone
-// ------------------------------------------------------------
 router.post("/check_invoice", upload.single("file"), async (req, res) => {
   try {
     console.log("📄 File received:", req.file?.originalname);
@@ -23,7 +11,6 @@ router.post("/check_invoice", upload.single("file"), async (req, res) => {
     console.log("End User Confirmed:", req.body.endUserConfirmed);
     console.log("CIS Rate:", req.body.cisRate);
 
-    // --- Temporary test reply for front-end verification ---
     res.json({
       parserNote: "Invoice upload received successfully.",
       aiReply: {
@@ -40,9 +27,6 @@ router.post("/check_invoice", upload.single("file"), async (req, res) => {
     console.error("❌ Error in /check_invoice:", err);
     res.status(500).json({ error: err.message });
   }
-});
-
-export default router;
 });
 
 export default router;
