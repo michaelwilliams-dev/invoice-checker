@@ -49,3 +49,29 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ AIVS Invoice Checker running on port ${PORT}`);
 });
+
+// ----------------------------------------------------
+// AIVS Security Guard: prevent raw invoice uploads to OpenAI
+// ----------------------------------------------------
+import fs from "fs";
+
+function safeForAI(input) {
+  const hasBinary = Buffer.isBuffer(input);
+  const isLarge = typeof input === "string" && input.length > 20000;
+  const looksLikeFile = /%PDF|PK\x03\x04|<xml/i.test(input);
+
+  if (hasBinary || isLarge || looksLikeFile) {
+    console.warn("🚫 BLOCKED: attempt to send raw file data to OpenAI prevented");
+    return false;
+  }
+  return true;
+}
+
+async function askOpenAI(prompt) {
+  if (!safeForAI(prompt)) {
+    throw new Error("Unsafe input blocked — raw invoice data must not leave server");
+  }
+  console.log("✅ OK: sending clean text to OpenAI");
+  // place your actual OpenAI call here
+  // const response = await openai.chat.completions.create({...});
+}
