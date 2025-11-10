@@ -51,7 +51,7 @@ Dropzone.options.invoiceDrop = {
       const v = response.aiReply;
       let formattedAIReply = "";
 
-      /* ▼▼▼ CHANGE START — blue, smaller section headings ▼▼▼ */
+      /* ▼▼▼ CHANGE START — headings blue and reduced in size ▼▼▼ */
       if (typeof v === "object" && v !== null) {
         formattedAIReply = `
           <div class="ai-section">
@@ -72,7 +72,7 @@ Dropzone.options.invoiceDrop = {
       } else {
         formattedAIReply = v || "No AI response.";
       }
-      /* ▲▲▲ CHANGE END — blue, smaller section headings ▲▲▲ */
+      /* ▲▲▲ CHANGE END — headings blue and reduced in size ▲▲▲ */
 
       actorsDiv.innerHTML = `
         <div class="actor"><span>Uploader:</span> ${file.name}</div>
