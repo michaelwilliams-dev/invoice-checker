@@ -28,8 +28,10 @@ const app = express();
 app.use(
   cors({
     origin: [
+      "https://invoice-checker-0miv.onrender.com",
+      "http://invoice-checker-0miv.onrender.com",
       "https://assistants.aivs.uk",
-      "https://property-assistant-plus.onrender.com",
+      "https://property-assistant-plus.onrender.com"
     ],
   })
 );
