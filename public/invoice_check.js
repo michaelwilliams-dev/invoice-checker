@@ -53,14 +53,6 @@ Dropzone.options.invoiceDrop = {
       formData.append("cisRate", document.getElementById("cisRate").value);
     });
 
-    // Restore message when finished
-    this.on("success", function () {
-      dzElement.innerHTML = '<div class="dz-message">📄 Drag & Drop your invoice here</div>';
-    });
-    this.on("error", function () {
-      dzElement.innerHTML = '<div class="dz-message">📄 Drag & Drop your invoice here</div>';
-    });
-
     // Handle successful response
     this.on("success", (file, response) => {
       const v = response.aiReply;
@@ -100,6 +92,14 @@ Dropzone.options.invoiceDrop = {
 
       // Show Clear button now that results exist
       clearBtn.style.display = "inline-block";
+    });
+
+    // When done, restore upload message
+    this.on("success", function () {
+      dzElement.innerHTML = '<div class="dz-message">📄 Drag & Drop your invoice here</div>';
+    });
+    this.on("error", function () {
+      dzElement.innerHTML = '<div class="dz-message">📄 Drag & Drop your invoice here</div>';
     });
 
     this.on("error", (file, err) => alert("Upload failed: " + err));
