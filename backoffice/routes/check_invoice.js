@@ -17,7 +17,7 @@ router.use(fileUpload());
 
 router.post("/check_invoice", async (req, res) => {
   try {
-    console.log("🟢 /check_invoice endpoint hit");   // 👈 goes first
+    console.log("🟢 /check_invoice endpoint hit", req.files);
     if (!req.files?.file) throw new Error("No file uploaded");
 
     const file = req.files.file;
