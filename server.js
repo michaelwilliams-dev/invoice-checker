@@ -39,7 +39,7 @@ app.use(express.urlencoded({ extended: true }));
 // ----------------------------------------------------
 // Static files and routes
 // ----------------------------------------------------
-app.use(express.static(path.join(__dirname, "backoffice")));
+app.use(express.static(path.join(__dirname, "public")));
 app.use("/", checkInvoiceRoute);
 
 // ----------------------------------------------------
