@@ -64,7 +64,7 @@ Dropzone.options.invoiceDrop = {
             <h3 style="color:#4e65ac;font-size:15px;font-weight:600;">Required Wording</h3><p>${v.required_wording || "—"}</p>
           </div>
           <div class="ai-section">
-            <h3 style="color:#4e65ac;font-size:15px;font-weight:600;">Corrected Invoice</h3><div>${v.corrected_invoice || "—"}</div>
+            <h3 style="color:#4e65ac;font-size:15px;font-weight:600;">Corrected Invoice</h3><div>${v.corrected_invoice || "—"}
           </div>
           <div class="ai-section">
             <h3 style="color:#4e65ac;font-size:15px;font-weight:600;">Summary</h3><p>${v.summary || "—"}</p>
