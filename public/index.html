@@ -1,6 +1,6 @@
 <!--
 AIVS CIS Compliance Checker · HTML Frontend
-ISO Timestamp: 2025-11-09T18:50:00Z
+ISO Timestamp: 2025-11-10T19:45:00Z
 Author: AIVS Software Limited
 Brand Colour: #4e65ac
 Description:
@@ -50,7 +50,7 @@ select{
   width:260px;
   padding:8px 10px;
   border:1px solid var(--aivs-blue);
-  border-radius:0 !important;   /* square in all browsers */
+  border-radius:0 !important;
   background:#fff;
   color:var(--aivs-blue);
   font-weight:600;
@@ -66,53 +66,72 @@ select:focus,select:hover{
 }
 
 /* --- Dropzone upload box --------------------------------------------- */
-.dropzone{
-  border:3px solid var(--aivs-blue);
-  border-radius:0;
-  background:#fff;
+.dropzone {
+  border:3px dashed var(--aivs-blue);
+  border-radius:8px;
+  background:#f9faff;
   margin-top:25px;
-  min-height:200px;
+  min-height:220px;
   color:var(--aivs-blue);
-  font-weight:700;
+  font-weight:600;
   position:relative;
-  text-transform:uppercase;
-  letter-spacing:.6px;
+  letter-spacing:.5px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  text-align:center;
+  transition:background 0.3s ease-in-out;
 }
-  /* ▼ REMOVE Dropzone default thumbnail preview ▼ */
-.dropzone .dz-preview {
-  display: none !important;
-}
-.dropzone .dz-button{
-  background:var(--aivs-blue);
-  color:#fff;
-  border:none;
-  border-radius:0;
-  padding:14px 34px;
-  cursor:pointer;
-  font-size:16px;
-}
-.dropzone .dz-button:hover{ background:#3c5399; }
+.dropzone:hover { background:#f0f3fa; }
 
-/* Progress indicator --------------------------------------------------- */
-.dz-progress{
-  position:absolute;
-  left:60%;
-  bottom:20px;
-  transform:translateX(-50%);
-  width:80%;
-  height:16px;
-  background:#e7ebf3;
-  border:1px solid var(--aivs-blue);
-  border-radius:0;
+/* Message text inside drop area */
+.dropzone .dz-message {
+  font-size:18px;
+  font-weight:600;
+  color:#4e65ac;
 }
-.dz-upload{
+
+/* File info line (no thumbnail box) */
+.dropzone .dz-preview {
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin-top:12px;
+  padding:8px 0;
+  border-top:1px solid #dce1ef;
+  font-size:15px;
+  font-weight:500;
+  color:#4e65ac;
+  background:none;
+  box-shadow:none;
+}
+.dropzone .dz-preview .dz-image,
+.dropzone .dz-success-mark,
+.dropzone .dz-error-mark { display:none !important; }
+.dropzone .dz-preview .dz-size {
+  margin-left:8px;
+  color:#555;
+  font-size:13px;
+  font-weight:400;
+}
+
+/* Upload progress bar */
+.dropzone .dz-progress {
+  width:80%;
+  height:10px;
+  background:#e7ebf3;
+  border-radius:5px;
+  overflow:hidden;
+  margin-top:10px;
+}
+.dropzone .dz-upload {
   background-color:var(--aivs-blue);
   height:100%;
   width:0%;
   transition:width .3s ease-in-out;
 }
-
-
 
 /* --- Results panel ---------------------------------------------------- */
 #actors{
@@ -164,11 +183,12 @@ select:focus,select:hover{
 </form>
 
 <!-- Dropzone uploader -->
-<form action="/check_invoice" class="dropzone" id="invoiceDrop"></form>
-
-<!-- Clear Results button -->
-  
-<!-- <button id="clearResultsBtn">Clear Results</button> -->
+<form action="/check_invoice" class="dropzone" id="invoiceDrop">
+  <div class="dz-message">
+    <p>📄 Drag & Drop your invoice here</p>
+    <p style="font-size:14px;color:#888;">or click to browse (PDF, PNG, JPG)</p>
+  </div>
+</form>
 
 <!-- AI response area -->
 <div id="actors"></div>
