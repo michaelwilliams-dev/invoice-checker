@@ -1,3 +1,9 @@
+/**
+ * AIVS Invoice Compliance Checker · Backend Route
+ * ISO Timestamp: 2025-11-10T15:25:00Z
+ * Author: AIVS Software Limited
+ */
+
 import express from "express";
 import multer from "multer";
 
