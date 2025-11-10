@@ -14,6 +14,7 @@ Dropzone.options.invoiceDrop = {
   init: function () {
     const dz = this;
     const actorsDiv = document.getElementById("actors");
+    const dzElement = document.getElementById("invoiceDrop");
 
     // Create Clear button (hidden by default)
     const clearBtn = document.createElement("button");
@@ -41,12 +42,26 @@ Dropzone.options.invoiceDrop = {
       clearBtn.style.display = "none"; // hide again
     });
 
+    // Show "please wait" message inside drop area while uploading
     this.on("sending", function (file, xhr, formData) {
+      dzElement.innerHTML = `
+        <div style="padding:60px 0;text-align:center;font-weight:600;color:#4e65ac;font-size:16px;">
+          ⏳ Please wait while we calculate your report...
+        </div>`;
       formData.append("vatCategory", document.getElementById("vatCategory").value);
       formData.append("endUserConfirmed", document.getElementById("endUserConfirmed").value);
       formData.append("cisRate", document.getElementById("cisRate").value);
     });
 
+    // Restore message when finished
+    this.on("success", function () {
+      dzElement.innerHTML = '<div class="dz-message">📄 Drag & Drop your invoice here</div>';
+    });
+    this.on("error", function () {
+      dzElement.innerHTML = '<div class="dz-message">📄 Drag & Drop your invoice here</div>';
+    });
+
+    // Handle successful response
     this.on("success", (file, response) => {
       const v = response.aiReply;
       let formattedAIReply = "";
@@ -64,7 +79,7 @@ Dropzone.options.invoiceDrop = {
             <h3 style="color:#4e65ac;font-size:15px;font-weight:600;">Required Wording</h3><p>${v.required_wording || "—"}</p>
           </div>
           <div class="ai-section">
-            <h3 style="color:#4e65ac;font-size:15px;font-weight:600;">Corrected Invoice</h3><div>${v.corrected_invoice || "—"}
+            <h3 style="color:#4e65ac;font-size:15px;font-weight:600;">Corrected Invoice</h3>${v.corrected_invoice || "—"}
           </div>
           <div class="ai-section">
             <h3 style="color:#4e65ac;font-size:15px;font-weight:600;">Summary</h3><p>${v.summary || "—"}</p>
