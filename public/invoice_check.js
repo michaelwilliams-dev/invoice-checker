@@ -29,8 +29,8 @@ Dropzone.options.invoiceDrop = {
       display:none;
       float:right;
       margin-top:10px;
-      font-size:16px;           /* slightly larger text */
-      font-weight:600;          /* bolder text */
+      font-size:16px;
+      font-weight:600;
     `;
     actorsDiv.insertAdjacentElement("afterend", clearBtn);
 
@@ -74,12 +74,14 @@ Dropzone.options.invoiceDrop = {
       }
       /* ▲▲▲ CHANGE END — headings blue and reduced in size ▲▲▲ */
 
+      /* ▼▼▼ CHANGE START — enlarge and color main labels ▼▼▼ */
       actorsDiv.innerHTML = `
-        <div class="actor"><span>Uploader:</span> ${file.name}</div>
-        <div class="actor"><span>Parser:</span> ${response.parserNote}</div>
-        <div class="actor"><span>AI Validator:</span><br>${formattedAIReply}</div>
-        <div class="actor"><span>Response Time:</span> ${response.timestamp || "—"}</div>
+        <div class="actor"><span style="color:#4e65ac;font-size:17px;font-weight:600;">Uploader:</span> ${file.name}</div>
+        <div class="actor"><span style="color:#4e65ac;font-size:17px;font-weight:600;">Parser:</span> ${response.parserNote}</div>
+        <div class="actor"><span style="color:#4e65ac;font-size:17px;font-weight:600;">AI Validator:</span><br>${formattedAIReply}</div>
+        <div class="actor"><span style="color:#4e65ac;font-size:17px;font-weight:600;">Response Time:</span> ${response.timestamp || "—"}</div>
       `;
+      /* ▲▲▲ CHANGE END — enlarge and color main labels ▲▲▲ */
 
       // Show Clear button now that results exist
       clearBtn.style.display = "inline-block";
