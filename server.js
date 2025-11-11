@@ -187,7 +187,7 @@ export async function sendReportEmail(to, ccList, docPath, pdfPath, timestamp) {
     const result = await mailjet.post("send", { version: "v3.1" }).request({
       Messages: [
         {
-          From: { Email: "noreply@aivs.uk", Name: "AIVS Invoice Checker" },
+          From: { Email: "noreply@securemaildrop.uk", Name: "Secure Maildrop" },
           To: [{ Email: mainTo }],
           Cc: ccArray,
           Subject: `AIVS Invoice Compliance Report · ${timestamp}`,
