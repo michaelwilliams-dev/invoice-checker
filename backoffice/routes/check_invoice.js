@@ -29,6 +29,15 @@ router.use(express.urlencoded({ extended: true }));
 router.post("/check_invoice", async (req, res) => {
   try {
     console.log("🟢 /check_invoice endpoint hit", req.files);
+
+    // 📡 TRACE START — dump all fields received
+    try {
+      console.log("🧭 TRACE req.body:", JSON.stringify(req.body, null, 2));
+    } catch (e) {
+      console.log("🧭 TRACE req.body could not stringify:", e.message, req.body);
+    }
+    // 📡 TRACE END
+
     if (!req.files?.file) throw new Error("No file uploaded");
 
     const file = req.files.file;
