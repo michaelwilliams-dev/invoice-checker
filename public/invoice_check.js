@@ -1,8 +1,8 @@
 /**
  * AIVS Invoice Compliance Checker · Frontend Logic
- * ISO Timestamp: 2025-11-11T13:05:00Z
+ * ISO Timestamp: 2025-11-11T15:55:00Z
  * Description:
- * Shows live “Uploading…” message inside Dropzone box itself.
+ * Shows upload feedback in #uploadStatus (never touches VAT dropdown).
  */
 
 Dropzone.autoDiscover = false;
@@ -13,48 +13,33 @@ const dz = new Dropzone("#invoiceDrop", {
   maxFilesize: 10,
   acceptedFiles: ".pdf,.jpg,.png,.json",
   autoProcessQueue: true,
-  addRemoveLinks: false,
   dictDefaultMessage: "📄 Drag & drop invoice here or click to select",
+  addRemoveLinks: false,
 
   init: function () {
     const dzInstance = this;
-    const dzElement = document.getElementById("invoiceDrop");
-    const startBtn = document.getElementById("startCheckBtn");
-    const actorsDiv = document.getElementById("actors");
-    startBtn.style.display = "none";
-    dzElement.style.minHeight = "120px";
+    const statusLine = document.getElementById("uploadStatus");
+    const actorsDiv  = document.getElementById("actors");
+    const startBtn   = document.getElementById("startCheckBtn");
 
-    // --- When upload starts --------------------------------------------------
+    startBtn.style.display = "none";
+
+    // When file starts uploading
     dzInstance.on("sending", (file, xhr, formData) => {
-      // dynamically find message each time (Dropzone may rebuild DOM)
-      const msgBox = dzElement.querySelector(".dz-message");
-      if (msgBox) {
-        msgBox.innerHTML = `
-          <div style="padding:35px 0;text-align:center;
-          color:#4e65ac;font-weight:600;">
-            ⏳ Uploading <br>${file.name}
-          </div>`;
-      }
+      statusLine.textContent = `⏳ Uploading ${file.name} …`;
       formData.append("vatCategory", document.getElementById("vatCategory").value);
       formData.append("endUserConfirmed", document.getElementById("endUserConfirmed").value);
       formData.append("cisRate", document.getElementById("cisRate").value);
     });
 
-    // --- When upload completes ----------------------------------------------
+    // Update progress %
+    dzInstance.on("uploadprogress", (file, progress) => {
+      statusLine.textContent = `⏳ Uploading ${file.name} – ${progress.toFixed(0)} %`;
+    });
+
+    // Upload success
     dzInstance.on("success", (file, response) => {
-      const msgBox = dzElement.querySelector(".dz-message");
-      if (msgBox) {
-        msgBox.innerHTML = `
-          <div style="padding:35px 0;text-align:center;
-          color:#4e65ac;font-weight:600;">
-            ✅ ${file.name} uploaded successfully
-          </div>`;
-      }
-
-      // lock the drop area
-      dzElement.classList.add("dz-success");
-      dzElement.style.pointerEvents = "none";
-
+      statusLine.textContent = `✅ ${file.name} uploaded successfully.`;
       actorsDiv.innerHTML = `
         <div class="actor"><span style="color:#4e65ac;font-size:17px;font-weight:600;">
           Uploader:</span> ${file.name}</div>
@@ -63,23 +48,17 @@ const dz = new Dropzone("#invoiceDrop", {
       startBtn.style.display = "block";
     });
 
-    // --- Handle upload errors -----------------------------------------------
+    // Upload error
     dzInstance.on("error", (file, err) => {
-      const msgBox = dzElement.querySelector(".dz-message");
-      if (msgBox) {
-        msgBox.innerHTML = `
-          <div style="padding:35px 0;text-align:center;color:#c0392b;">
-            ❌ Upload failed<br>${err}
-          </div>`;
-      }
+      statusLine.textContent = `❌ Upload failed – ${err}`;
     });
 
-    // --- Prevent multiple files --------------------------------------------
+    // Ensure single file only
     dzInstance.on("addedfile", () => {
       if (dzInstance.files.length > 1) dzInstance.removeFile(dzInstance.files[0]);
     });
 
-    // --- Start Compliance Check (demo placeholder) --------------------------
+    // “Start Compliance Check” placeholder
     startBtn.addEventListener("click", () => {
       startBtn.disabled = true;
       startBtn.textContent = "Generating Report…";
