@@ -1,6 +1,6 @@
 /**
  * AIVS Invoice Compliance Checker · Express Route
- * ISO Timestamp: 2025-11-09T18:45:00Z
+ * ISO Timestamp: 2025-11-11T16:40:00Z
  * Author: AIVS Software Limited
  * Brand Colour: #4e65ac
  *
@@ -21,10 +21,15 @@ import { saveReportFiles, sendReportEmail } from "../../server.js";
 /* ▲▲▲  CHANGE END   — import helpers for report + email  ▲▲▲ */
 
 const router = express.Router();
-router.use(fileUpload());
 
-/* ✅ CHANGE ADDED — ensure non-file fields (email, VAT flags) are parsed */
-router.use(express.urlencoded({ extended: true }));
+// ✅ Parse multipart form data (files + text fields)
+router.use(
+  fileUpload({
+    parseNested: true,
+    useTempFiles: false,
+    preserveExtension: true,
+  })
+);
 
 router.post("/check_invoice", async (req, res) => {
   try {
@@ -44,7 +49,7 @@ router.post("/check_invoice", async (req, res) => {
     const flags = {
       vatCategory: req.body.vatCategory,
       endUserConfirmed: req.body.endUserConfirmed,
-      cisRate: req.body.cisRate
+      cisRate: req.body.cisRate,
     };
 
     const parsed = await parseInvoice(file.data);
@@ -54,7 +59,12 @@ router.post("/check_invoice", async (req, res) => {
     const { docPath, pdfPath, timestamp } = await saveReportFiles(aiReply);
 
     // debug log to confirm addresses reach backend
-    console.log("📨 Email fields received:", req.body.userEmail, req.body.emailCopy1, req.body.emailCopy2);
+    console.log(
+      "📨 Email fields received:",
+      req.body.userEmail,
+      req.body.emailCopy1,
+      req.body.emailCopy2
+    );
 
     const to = req.body.userEmail;
     const ccList = [req.body.emailCopy1, req.body.emailCopy2];
@@ -63,14 +73,16 @@ router.post("/check_invoice", async (req, res) => {
     res.json({
       parserNote: parsed.parserNote,
       aiReply,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
-    return; // ✅ added explicit return
+    return; // ✅ explicit return
   } catch (err) {
     console.error("❌ /check_invoice error:", err.message);
-    res.status(500).json({ error: err.message, timestamp: new Date().toISOString() });
-    return; // ✅ added explicit return
+    res
+      .status(500)
+      .json({ error: err.message, timestamp: new Date().toISOString() });
+    return; // ✅ explicit return
   }
 });
 
