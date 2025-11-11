@@ -1,8 +1,11 @@
 /**
  * AIVS Invoice Compliance Checker · Frontend Logic
- * ISO Timestamp: 2025-11-11T15:55:00Z
+ * ISO Timestamp: 2025-11-11T17:05:00Z
+ * Author: AIVS Software Limited
+ * Brand Colour: #4e65ac
  * Description:
- * Shows upload feedback in #uploadStatus (never touches VAT dropdown).
+ * Compact one-file Dropzone with clear in-box upload message
+ * and follow-up compliance button.
  */
 
 Dropzone.autoDiscover = false;
@@ -13,63 +16,89 @@ const dz = new Dropzone("#invoiceDrop", {
   maxFilesize: 10,
   acceptedFiles: ".pdf,.jpg,.png,.json",
   autoProcessQueue: true,
-  dictDefaultMessage: "📄 Drag & drop invoice here or click to select",
   addRemoveLinks: false,
-
+  dictDefaultMessage: "📄 Drop or click to upload invoice",
   init: function () {
     const dzInstance = this;
-    const statusLine = document.getElementById("uploadStatus");
+    const dzElement  = document.getElementById("invoiceDrop");
     const actorsDiv  = document.getElementById("actors");
     const startBtn   = document.getElementById("startCheckBtn");
-
     startBtn.style.display = "none";
 
-    // When file starts uploading
+    // Ensure compact height
+    dzElement.style.height = "80px";
+    dzElement.style.minHeight = "80px";
+    dzElement.style.position = "relative";
+    dzElement.style.overflow = "hidden";
+
+    // Overlay message element
+    const overlay = document.createElement("div");
+    overlay.id = "uploadOverlay";
+    overlay.style.cssText = `
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:rgba(255,255,255,0.8);
+      color:#4e65ac;
+      font-weight:600;
+      font-size:14px;
+      z-index:10;
+      visibility:hidden;
+    `;
+    dzElement.appendChild(overlay);
+
+    // --- When sending (start upload) --------------------------------------
     dzInstance.on("sending", (file, xhr, formData) => {
-      statusLine.textContent = `⏳ Uploading ${file.name} …`;
+      overlay.textContent = `⏳ Uploading ${file.name} …`;
+      overlay.style.visibility = "visible";
       formData.append("vatCategory", document.getElementById("vatCategory").value);
       formData.append("endUserConfirmed", document.getElementById("endUserConfirmed").value);
       formData.append("cisRate", document.getElementById("cisRate").value);
     });
 
-    // Update progress %
+    // --- Progress update --------------------------------------------------
     dzInstance.on("uploadprogress", (file, progress) => {
-      statusLine.textContent = `⏳ Uploading ${file.name} – ${progress.toFixed(0)} %`;
+      overlay.textContent = `⏳ Uploading ${file.name} – ${progress.toFixed(0)} %`;
     });
 
-    // Upload success
+    // --- Success ----------------------------------------------------------
     dzInstance.on("success", (file, response) => {
-      statusLine.textContent = `✅ ${file.name} uploaded successfully.`;
+      overlay.textContent = `✅ ${file.name} uploaded successfully`;
+      setTimeout(() => { overlay.style.visibility = "hidden"; }, 1000);
+
       actorsDiv.innerHTML = `
-        <div class="actor"><span style="color:#4e65ac;font-size:17px;font-weight:600;">
+        <div class="actor"><span style="color:#4e65ac;font-size:16px;font-weight:600;">
           Uploader:</span> ${file.name}</div>
-        <div class="actor"><span style="color:#4e65ac;font-size:17px;font-weight:600;">
+        <div class="actor"><span style="color:#4e65ac;font-size:16px;font-weight:600;">
           Parser:</span> ${response.parserNote || "Invoice parsed successfully."}</div>`;
       startBtn.style.display = "block";
     });
 
-    // Upload error
+    // --- Error ------------------------------------------------------------
     dzInstance.on("error", (file, err) => {
-      statusLine.textContent = `❌ Upload failed – ${err}`;
+      overlay.textContent = `❌ Upload failed – ${err}`;
+      setTimeout(() => { overlay.style.visibility = "hidden"; }, 2000);
     });
 
-    // Ensure single file only
+    // --- Enforce single file ---------------------------------------------
     dzInstance.on("addedfile", () => {
       if (dzInstance.files.length > 1) dzInstance.removeFile(dzInstance.files[0]);
     });
 
-    // “Start Compliance Check” placeholder
+    // --- Start Compliance Check (demo placeholder) ------------------------
     startBtn.addEventListener("click", () => {
       startBtn.disabled = true;
       startBtn.textContent = "Generating Report…";
       actorsDiv.insertAdjacentHTML(
         "beforeend",
-        `<div style="padding:15px;color:#4e65ac;font-weight:600;">⚙️ Generating report…</div>`
+        `<div style="padding:12px;color:#4e65ac;font-weight:600;">⚙️ Generating report…</div>`
       );
       setTimeout(() => {
         actorsDiv.insertAdjacentHTML(
           "beforeend",
-          `<div style="padding:15px;color:#333;">✅ Report ready (demo placeholder)</div>`
+          `<div style="padding:12px;color:#333;">✅ Report ready (demo placeholder)</div>`
         );
         startBtn.disabled = false;
         startBtn.textContent = "▶ Start Compliance Check";
