@@ -21,15 +21,10 @@ import { saveReportFiles, sendReportEmail } from "../../server.js";
 /* ▲▲▲  CHANGE END   — import helpers for report + email  ▲▲▲ */
 
 const router = express.Router();
+router.use(fileUpload());
 
-/* ✅ CHANGE — enable multipart text-field parsing within express-fileupload */
-router.use(
-  fileUpload({
-    useTempFiles: false,
-    parseNested: true,
-    preserveExtension: true,
-  })
-);
+/* ✅ CHANGE ADDED — ensure non-file fields (email, VAT flags) are parsed */
+router.use(express.urlencoded({ extended: true }));
 
 router.post("/check_invoice", async (req, res) => {
   try {
@@ -62,11 +57,11 @@ router.post("/check_invoice", async (req, res) => {
       timestamp: new Date().toISOString()
     });
 
-    return; // ✅ explicit return
+    return; // ✅ added explicit return
   } catch (err) {
     console.error("❌ /check_invoice error:", err.message);
     res.status(500).json({ error: err.message, timestamp: new Date().toISOString() });
-    return; // ✅ explicit return
+    return; // ✅ added explicit return
   }
 });
 
