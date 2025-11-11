@@ -95,7 +95,7 @@ export async function saveReportFiles(aiReply) {
         new Paragraph({ text: `Required Wording: ${aiReply.required_wording || "—"}` }),
         new Paragraph({ text: `Summary: ${aiReply.summary || "—"}` }),
 
-        // ✅ NEW — include corrected invoice text (stripped HTML)
+        // ✅ NEW — formatted corrected invoice section
         ...(aiReply.corrected_invoice
           ? [
               new Paragraph({
@@ -113,8 +113,11 @@ export async function saveReportFiles(aiReply) {
                 children: [
                   new TextRun({
                     text: aiReply.corrected_invoice
-                      .replace(/<[^>]+>/g, "")
+                      .replace(/<\/(div|p|tr)>/gi, "\n")   // keep visual breaks
+                      .replace(/<\/td>/gi, " | ")          // simulate table cells
+                      .replace(/<[^>]+>/g, "")             // remove tags
                       .replace(/\s{2,}/g, " ")
+                      .replace(/\n{2,}/g, "\n")
                       .trim(),
                     size: 22,
                   }),
