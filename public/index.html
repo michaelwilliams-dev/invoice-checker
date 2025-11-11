@@ -180,18 +180,67 @@ select:focus,select:hover{
 
 <!-- --- Email Inputs -------------------------------------------- -->
 <div id="emailSection" style="margin-top:25px;">
-  <label for="userEmail" style="display:block;margin-bottom:8px;font-weight:600;">
+  <label for="userEmail"
+    style="display:block;margin-bottom:8px;font-weight:600;color:#4e65ac;">
     Email addresses (for report copies):
   </label>
 
-  <input type="email" id="userEmail" placeholder="Primary email"
-    style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:4px;">
-  <input type="email" id="emailCopy1" placeholder="Copy to (optional)"
-    style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:4px;">
-  <input type="email" id="emailCopy2" placeholder="Copy to (optional)"
-    style="width:100%;padding:10px;border:1px solid #ccc;border-radius:4px;">
-</div>
+  <input
+    type="email"
+    id="userEmail"
+    placeholder="Primary email"
+    style="
+      width:260px;
+      padding:8px 10px;
+      border:1px solid #4e65ac;
+      border-radius:0;
+      background:#fff;
+      color:#333;
+      font-size:14px;
+      font-weight:500;
+      box-sizing:border-box;
+      margin-bottom:10px;
+      display:block;
+    "
+  >
 
+  <input
+    type="email"
+    id="emailCopy1"
+    placeholder="Copy to (optional)"
+    style="
+      width:260px;
+      padding:8px 10px;
+      border:1px solid #4e65ac;
+      border-radius:0;
+      background:#fff;
+      color:#333;
+      font-size:14px;
+      font-weight:500;
+      box-sizing:border-box;
+      margin-bottom:10px;
+      display:block;
+    "
+  >
+
+  <input
+    type="email"
+    id="emailCopy2"
+    placeholder="Copy to (optional)"
+    style="
+      width:260px;
+      padding:8px 10px;
+      border:1px solid #4e65ac;
+      border-radius:0;
+      background:#fff;
+      color:#333;
+      font-size:14px;
+      font-weight:500;
+      box-sizing:border-box;
+      display:block;
+    "
+  >
+</div>
 <!-- AI response area -->
 <div id="actors"></div>
 
