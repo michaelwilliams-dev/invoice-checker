@@ -100,11 +100,22 @@ const dz = new Dropzone("#invoiceDrop", {
           </div>`;
       }
 
+      // ---- Added banner above corrected invoice ------------------------
       if (r.corrected_invoice) {
         formattedAI += `
           <div style="margin-top:12px;">
             <h4 style="color:#4e65ac;margin-bottom:6px;">Corrected Invoice Preview</h4>
             <div style="border:1px solid #e7ebf3;padding:10px;background:#f9f9fb;">
+              <div style="
+                text-align:center;
+                font-weight:700;
+                font-size:16px;
+                color:#c0392b;
+                margin-bottom:10px;
+                text-transform:uppercase;
+              ">
+                TAX INVOICE EXAMPLE: NOT FOR USE
+              </div>
               ${r.corrected_invoice}
             </div>
           </div>`;
