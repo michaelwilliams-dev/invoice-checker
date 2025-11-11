@@ -25,6 +25,10 @@ const dz = new Dropzone("#invoiceDrop", {
     const actorsDiv  = document.getElementById("actors");
     const clearBtn   = document.getElementById("clearResultsBtn");
 
+    // --- NEW: quick diagnostic and visibility test -----------------------
+    console.log("Clear button reference:", clearBtn);
+    clearBtn.style.display = "block";  // temporary test to confirm visibility
+
     // --- Clear Results button logic -------------------------------------
     clearBtn.addEventListener("click", () => {
       actorsDiv.innerHTML = "";               // Clear report output
