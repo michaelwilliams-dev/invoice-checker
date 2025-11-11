@@ -1,11 +1,10 @@
 <!--
 AIVS CIS Compliance Checker · HTML Frontend
-ISO Timestamp: 2025-11-11T17:55:00Z
+ISO Timestamp: 2025-11-11T19:55:00Z
 Author: AIVS Software Limited
 Brand Colour: #4e65ac
 Description:
-Two-step upload + analysis flow for CIS/VAT compliance.
-Single-file upload → user presses “Start Compliance Check” to run.
+Single-step upload + automatic AI compliance report generation.
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -90,25 +89,6 @@ select:focus,select:hover{
 }
 .dropzone .dz-button:hover{ background:#3c5399; }
 
-/* Progress indicator --------------------------------------------------- */
-.dz-progress{
-  position:absolute;
-  left:60%;
-  bottom:20px;
-  transform:translateX(-50%);
-  width:80%;
-  height:16px;
-  background:#e7ebf3;
-  border:1px solid var(--aivs-blue);
-  border-radius:0;
-}
-.dz-upload{
-  background-color:var(--aivs-blue);
-  height:100%;
-  width:0%;
-  transition:width .3s ease-in-out;
-}
-
 /* --- Results panel ---------------------------------------------------- */
 #actors{
   background:#fff;
@@ -162,22 +142,6 @@ select:focus,select:hover{
 <!-- Dropzone uploader -->
 <form action="/check_invoice" class="dropzone" id="invoiceDrop"></form>
 
-<!-- Start Compliance Check button -->
-<button id="startCheckBtn"
-  style="
-    display:none;
-    background:var(--aivs-blue);
-    color:#fff;
-    border:none;
-    border-radius:0;
-    padding:14px 34px;
-    cursor:pointer;
-    font-size:16px;
-    font-weight:600;
-    margin-top:18px;">
-  ▶ Start Compliance Check
-</button>
-
 <!-- Clear Results button -->
 <button id="clearResultsBtn"
   style="
@@ -202,66 +166,25 @@ select:focus,select:hover{
     Email addresses (for report copies):
   </label>
 
-  <input
-    type="email"
-    id="userEmail"
-    placeholder="Primary email"
-    style="
-      width:400px;
-      padding:8px 10px;
-      border:1.5px solid var(--aivs-blue);
-      border-radius:0;
-      background:#fff;
-      color:#222;
-      font-size:14px;
-      font-weight:500;
-      box-sizing:border-box;
-      margin-bottom:10px;
-      display:block;
-      box-shadow:0 0 0 1px rgba(78,101,172,0.1);
-    "
-  >
+  <input type="email" id="userEmail" placeholder="Primary email"
+    style="width:400px;padding:8px 10px;border:1.5px solid var(--aivs-blue);
+    border-radius:0;background:#fff;color:#222;font-size:14px;font-weight:500;
+    box-sizing:border-box;margin-bottom:10px;display:block;
+    box-shadow:0 0 0 1px rgba(78,101,172,0.1);">
 
-  <input
-    type="email"
-    id="emailCopy1"
-    placeholder='Copy to (optional)'
-    style="
-      width:400px;
-      padding:8px 10px;
-      border:1.5px solid var(--aivs-blue);
-      border-radius:0;
-      background:#fff;
-      color:#222;
-      font-size:14px;
-      font-weight:500;
-      box-sizing:border-box;
-      margin-bottom:10px;
-      display:block;
-      box-shadow:0 0 0 1px rgba(78,101,172,0.1);
-    "
-  >
+  <input type="email" id="emailCopy1" placeholder="Copy to (optional)"
+    style="width:400px;padding:8px 10px;border:1.5px solid var(--aivs-blue);
+    border-radius:0;background:#fff;color:#222;font-size:14px;font-weight:500;
+    box-sizing:border-box;margin-bottom:10px;display:block;
+    box-shadow:0 0 0 1px rgba(78,101,172,0.1);">
 
-  <input
-    type="email"
-    id="emailCopy2"
-    placeholder='Copy to (optional)'
-    style="
-      width:400px;
-      padding:8px 10px;
-      border:1.5px solid var(--aivs-blue);
-      border-radius:0;
-      background:#fff;
-      color:#222;
-      font-size:14px;
-      font-weight:500;
-      box-sizing:border-box;
-      display:block;
-      box-shadow:0 0 0 1px rgba(78,101,172,0.1);
-    "
-  >
+  <input type="email" id="emailCopy2" placeholder="Copy to (optional)"
+    style="width:400px;padding:8px 10px;border:1.5px solid var(--aivs-blue);
+    border-radius:0;background:#fff;color:#222;font-size:14px;font-weight:500;
+    box-sizing:border-box;display:block;
+    box-shadow:0 0 0 1px rgba(78,101,172,0.1);">
 </div>
-  
+
 <!-- AI response area -->
 <div id="actors"></div>
 
