@@ -1,6 +1,6 @@
 /**
  * AIVS Invoice Compliance Checker · Frontend Logic
- * ISO Timestamp: 2025-11-11T18:10:00Z
+ * ISO Timestamp: 2025-11-11T19:50:00Z
  * Author: AIVS Software Limited
  * Brand Colour: #4e65ac
  * Description:
@@ -64,30 +64,35 @@ const dz = new Dropzone("#invoiceDrop", {
       // Replace overlay content with Uploader + Parser lines inside the same box
       overlay.innerHTML = `
         <div><strong style="color:#4e65ac;">Uploader:</strong> ${file.name}</div>
-        <div><strong style="color:#4e65ac;">Parser:</strong> ${response.parserNote || "File parsed successfully."}</div>
+        <div><strong style="color:#4e65ac;">Parser:</strong> ${
+          response.parserNote || "Invoice parsed successfully."
+        }</div>
       `;
 
       // --- Build readable AI report ------------------------------------
       let formattedAI = "";
+      const r = response.aiReply || response; // handle nested or flat response
 
-      if (response.vat_check || response.cis_check || response.required_wording) {
+      if (r.vat_check || r.cis_check || r.required_wording || r.summary) {
         formattedAI = `
           <div style="padding:8px;">
             <h3 style="color:#4e65ac;font-size:16px;font-weight:600;margin-bottom:8px;">
               AI Compliance Report
             </h3>
-            <p><strong>VAT / DRC Check:</strong><br>${response.vat_check || "—"}</p>
-            <p><strong>CIS Check:</strong><br>${response.cis_check || "—"}</p>
-            <p><strong>Required Wording:</strong><br>${response.required_wording || "—"}</p>
-            <p><strong>Summary:</strong><br>${response.summary || "—"}</p>
+            <p><strong>VAT / DRC Check:</strong><br>${r.vat_check || "—"}</p>
+            <p><strong>CIS Check:</strong><br>${r.cis_check || "—"}</p>
+            <p><strong>Required Wording:</strong><br>${r.required_wording || "—"}</p>
+            <p><strong>Summary:</strong><br>${r.summary || "—"}</p>
           </div>`;
       }
 
-      if (response.corrected_invoice) {
+      if (r.corrected_invoice) {
         formattedAI += `
           <div style="margin-top:12px;">
             <h4 style="color:#4e65ac;margin-bottom:6px;">Corrected Invoice Preview</h4>
-            ${response.corrected_invoice}
+            <div style="border:1px solid #e7ebf3;padding:10px;background:#f9f9fb;">
+              ${r.corrected_invoice}
+            </div>
           </div>`;
       }
 
