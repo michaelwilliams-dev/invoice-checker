@@ -1,6 +1,6 @@
 <!--
 AIVS CIS Compliance Checker · HTML Frontend
-ISO Timestamp: 2025-11-11T09:40:00Z
+ISO Timestamp: 2025-11-11T17:55:00Z
 Author: AIVS Software Limited
 Brand Colour: #4e65ac
 Description:
@@ -178,6 +178,23 @@ select:focus,select:hover{
   ▶ Start Compliance Check
 </button>
 
+<!-- Clear Results button -->
+<button id="clearResultsBtn"
+  style="
+    display:none;
+    background:var(--aivs-blue);
+    color:#fff;
+    border:none;
+    border-radius:0;
+    padding:10px 26px;
+    font-size:15px;
+    font-weight:600;
+    margin-top:16px;
+    cursor:pointer;
+  ">
+  ✖ Clear Results
+</button>
+
 <!-- --- Email Inputs -------------------------------------------- -->
 <div id="emailSection" style="margin-top:25px;">
   <label for="userEmail"
@@ -190,7 +207,7 @@ select:focus,select:hover{
     id="userEmail"
     placeholder="Primary email"
     style="
-      width:400px;                     /* widened for readability */
+      width:400px;
       padding:8px 10px;
       border:1.5px solid var(--aivs-blue);
       border-radius:0;
