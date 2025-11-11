@@ -1,6 +1,6 @@
 /**
  * AIVS Invoice Compliance Checker · Stand-Alone Service
- * ISO Timestamp: 2025-11-09T19:20:00Z
+ * ISO Timestamp: 2025-11-11T16:15:00Z
  * Author: AIVS Software Limited
  * Brand Colour: #4e65ac
  */
@@ -10,6 +10,7 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import checkInvoiceRoute from "./backoffice/routes/check_invoice.js";
+import sendEmailRoute from "./backoffice/routes/send_email.js";   // ✅ added route import
 
 // ----------------------------------------------------
 // Initialise
@@ -43,6 +44,7 @@ app.use(express.urlencoded({ extended: true }));
 // ----------------------------------------------------
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/", checkInvoiceRoute);
+app.use("/", sendEmailRoute);   // ✅ register new email route
 
 // ----------------------------------------------------
 // Start server (Render supplies PORT env var)
