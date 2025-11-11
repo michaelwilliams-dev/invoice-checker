@@ -1,59 +1,39 @@
 /**
  * AIVS Invoice Compliance Checker · Frontend Logic
- * ISO Timestamp: 2025-11-11T12:05:00Z
+ * ISO Timestamp: 2025-11-11T12:35:00Z
  * Author: AIVS Software Limited
- * Brand Colour: #4e65ac
  * Description:
- * Uploads one invoice automatically to /check_invoice,
- * shows upload progress inside the visible drop area,
- * then reveals the Generate Report button after upload.
+ * One-file upload to /check_invoice with progress shown in the
+ * visible Dropzone box, then reveals the Start Compliance button.
  */
 
-Dropzone.options.invoiceDrop = {
+Dropzone.autoDiscover = false;
+
+const dz = new Dropzone("#invoiceDrop", {
+  url: "/check_invoice",
   maxFiles: 1,
   maxFilesize: 10,
   acceptedFiles: ".pdf,.jpg,.png,.json",
-  autoProcessQueue: true, // upload immediately on drop
+  autoProcessQueue: true, // upload automatically
+  addRemoveLinks: false,
+  dictDefaultMessage: "📄 Drag & drop invoice here or click to select",
   init: function () {
-    const dz = this;
-    const actorsDiv = document.getElementById("actors");
+    const dzInstance = this;
     const dzElement = document.getElementById("invoiceDrop");
+    const msgBox = dzElement.querySelector(".dz-message");
     const startBtn = document.getElementById("startCheckBtn");
-    startBtn.style.display = "none"; // hidden until upload finishes
+    const actorsDiv = document.getElementById("actors");
+    startBtn.style.display = "none";
 
-    // Compact Dropzone box
     dzElement.style.minHeight = "120px";
 
-    // Add Clear button (unchanged)
-    const clearBtn = document.createElement("button");
-    clearBtn.textContent = "Clear Results";
-    clearBtn.id = "clearResultsBtn";
-    clearBtn.style.cssText = `
-      background:#4e65ac;color:#fff;border:none;
-      padding:12px 28px;border-radius:4px;
-      cursor:pointer;display:none;float:right;
-      margin-top:10px;font-size:16px;font-weight:600;
-    `;
-    actorsDiv.insertAdjacentElement("afterend", clearBtn);
-
-    clearBtn.addEventListener("click", () => {
-      actorsDiv.innerHTML = "";
-      dz.removeAllFiles(true);
-      clearBtn.style.display = "none";
-      startBtn.style.display = "none";
-      // Reset Dropzone text
-      const msg = dzElement.querySelector(".dz-message");
-      if (msg) msg.innerHTML = "📄 Drag & Drop your invoice here";
-    });
-
-    // Show upload progress message *inside* the Dropzone message area
-    this.on("sending", function (file, xhr, formData) {
-      const msg = dzElement.querySelector(".dz-message");
-      if (msg) {
-        msg.innerHTML = `
+    // During upload – message inside box
+    dzInstance.on("sending", (file, xhr, formData) => {
+      if (msgBox) {
+        msgBox.innerHTML = `
           <div style="padding:40px 0;text-align:center;
           font-weight:600;color:#4e65ac;font-size:16px;">
-            ⏳ Uploading ${file.name} ...
+            ⏳ Uploading <br>${file.name}
           </div>`;
       }
       formData.append("vatCategory", document.getElementById("vatCategory").value);
@@ -61,36 +41,47 @@ Dropzone.options.invoiceDrop = {
       formData.append("cisRate", document.getElementById("cisRate").value);
     });
 
-    // Upload complete → restore Dropzone message + show Generate Report
-    this.on("success", function (file, response) {
-      dz.uploadResponse = response;
-
-      const msg = dzElement.querySelector(".dz-message");
-      if (msg) {
-        msg.innerHTML = `
+    // When upload succeeds
+    dzInstance.on("success", (file, response) => {
+      if (msgBox) {
+        msgBox.innerHTML = `
           <div style="padding:40px 0;text-align:center;
           font-weight:600;color:#4e65ac;font-size:16px;">
-            ✅ File uploaded successfully
+            ✅ ${file.name} uploaded successfully
           </div>`;
       }
+      // lock box so user can’t click again until cleared
+      dzElement.classList.add("dz-success");
+      dzElement.style.pointerEvents = "none";
 
+      // display upload info below
       actorsDiv.innerHTML = `
         <div class="actor"><span style="color:#4e65ac;font-size:17px;font-weight:600;">
           Uploader:</span> ${file.name}</div>
         <div class="actor"><span style="color:#4e65ac;font-size:17px;font-weight:600;">
-          Parser:</span> ${response.parserNote || "File received, ready for analysis."}</div>
+          Parser:</span> ${response.parserNote || "File parsed successfully."}</div>
       `;
       startBtn.style.display = "block";
     });
 
-    // Error handling
-    this.on("error", (file, err) => {
-      alert("Upload failed: " + err);
-      const msg = dzElement.querySelector(".dz-message");
-      if (msg) msg.innerHTML = "📄 Drag & Drop your invoice here";
+    // Handle errors
+    dzInstance.on("error", (file, err) => {
+      if (msgBox) {
+        msgBox.innerHTML = `
+          <div style="padding:40px 0;text-align:center;color:#c0392b;">
+            ❌ Upload failed<br>${err}
+          </div>`;
+      }
     });
 
-    // Placeholder Generate Report
+    // Clear results when new file manually added after clear
+    dzInstance.on("addedfile", function () {
+      if (dzInstance.files.length > 1) {
+        dzInstance.removeFile(dzInstance.files[0]);
+      }
+    });
+
+    // Start button (demo only for now)
     startBtn.addEventListener("click", () => {
       startBtn.disabled = true;
       startBtn.textContent = "Generating Report…";
@@ -98,16 +89,14 @@ Dropzone.options.invoiceDrop = {
         "beforeend",
         `<div style='padding:15px;color:#4e65ac;font-weight:600;'>⚙️ Generating report…</div>`
       );
-
       setTimeout(() => {
         actorsDiv.insertAdjacentHTML(
           "beforeend",
           `<div style='padding:15px;color:#333;'>✅ Report ready (demo placeholder)</div>`
         );
-        clearBtn.style.display = "inline-block";
-        startBtn.textContent = "Generate Report";
         startBtn.disabled = false;
+        startBtn.textContent = "▶ Start Compliance Check";
       }, 2000);
     });
   },
-};
+});
