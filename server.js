@@ -123,13 +123,20 @@ export async function saveReportFiles(aiReply) {
   // --- PDF raw dump -----------------------------------------------
   const pdfPath = path.join(__reportDir, `${baseName}_raw.pdf`);
   const pdf = new PDFDocument();
-  pdf.pipe(fs.createWriteStream(pdfPath));
+  const stream = fs.createWriteStream(pdfPath);
+  pdf.pipe(stream);
   pdf.fontSize(14).text("AIVS RAW AI OUTPUT – UNEDITED ARCHIVE COPY", { align: "center" });
   pdf.moveDown();
   pdf.fontSize(10).text(`Generated: ${timestamp}`);
   pdf.moveDown();
   pdf.fontSize(11).text(JSON.stringify(aiReply, null, 2));
   pdf.end();
+
+  // ✅ wait for PDF file to finish writing before continuing
+  await new Promise((resolve, reject) => {
+    stream.on("finish", resolve);
+    stream.on("error", reject);
+  });
 
   console.log("✅ Report files saved:", docPath, pdfPath);
   return { docPath, pdfPath, timestamp };
