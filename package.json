@@ -24,7 +24,8 @@
     "openai": "^4.23.0",
     "pdf-parse": "^1.1.1",
     "docx": "^8.0.0",
-    "pdfkit": "^0.15.0"
+    "pdfkit": "^0.15.0",
+    "node-mailjet": "^6.0.0"
   },
   "engines": {
     "node": "20.x"
