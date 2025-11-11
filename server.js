@@ -102,6 +102,8 @@ export async function saveReportFiles(aiReply) {
                 ],
                 spacing: { before: 240, after: 120 },
               }),
+            
+             // ✅ Improved invoice formatting – fixes cramped text and spacing
               new Paragraph({
                 children: aiReply.corrected_invoice
                   .replace(/<\/(div|p|tr|h[1-6])>/gi, "\n")
@@ -111,16 +113,22 @@ export async function saveReportFiles(aiReply) {
                   .replace(/\s{2,}/g, " ")
                   .replace(/\n{2,}/g, "\n")
                   .trim()
-                  .split("\n")
+                  .split(/\n+/)
+                  .filter(line => line.trim().length > 0)
                   .map(line =>
                     new TextRun({
-                      text: line.trim(),
+                      text: line
+                        .replace(/\s*\|\s*/g, "  |  ")      // add spacing around pipes
+                        .replace(/([A-Za-z])(\d)/g, "$1 $2") // e.g. “Qty10” → “Qty 10”
+                        .replace(/(£)(\d)/g, "$1 $2"),       // e.g. “£26668.76” → “£ 26668.76”
                       break: 1,
                       size: 22,
                     })
                   ),
                 spacing: { after: 200 },
               }),
+
+            
             ]
           : []),
 
