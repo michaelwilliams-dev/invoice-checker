@@ -139,8 +139,27 @@ ${JSON.stringify(response, null, 2)}
       overlay.innerHTML = `<span style="color:#c0392b;">❌ Upload failed – ${err}</span>`;
     });
 
-    // ---- enforce single file -------------------------------------------
-    dzInstance.on("addedfile", () => {
+    // ---- enforce single file + auto-reset with message ------------------
+    dzInstance.on("addedfile", file => {
+      const existingReport = document.getElementById("actors")?.innerHTML.trim();
+      if (existingReport && existingReport.length > 0) {
+        const notice = document.createElement("div");
+        notice.style.cssText = `
+          position:absolute; inset:0;
+          background:rgba(255,255,255,0.95);
+          display:flex; flex-direction:column;
+          align-items:center; justify-content:center;
+          font-size:15px; font-weight:600;
+          color:#4e65ac; z-index:20;
+        `;
+        notice.textContent = "🔄 Resetting for new upload…";
+        dzElement.appendChild(notice);
+
+        console.log("🔄 Auto-reset triggered by new file drop");
+        setTimeout(() => location.reload(), 1200);
+        return false;
+      }
+
       if (dzInstance.files.length > 1) dzInstance.removeFile(dzInstance.files[0]);
     });
   },
