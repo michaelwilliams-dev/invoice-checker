@@ -17,7 +17,7 @@ const dz = new Dropzone("#invoiceDrop", {
   acceptedFiles: ".pdf,.jpg,.png,.json",
   autoProcessQueue: true,
   addRemoveLinks: false,
-  dictDefaultMessage: "📄 Drop or click to upload invoice",
+  dictDefaultMessage: "📄 Drop file here  to upload invoice - accepted files: pdf jpg png json",
 
   init: function () {
     const dzInstance = this;
