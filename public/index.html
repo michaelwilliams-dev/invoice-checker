@@ -137,9 +137,14 @@ select:focus,select:hover{
 
 <!-- ===== INVOICE UPLOAD ===== -->
 <form action="/check_invoice" class="dropzone" id="invoiceDrop">
-  <div class="dz-message">📄 Drop or click to upload invoice</div>
+  <div class="dz-message">📄 Drop file here to upload invoice - accepted files: pdf jpg png json</div>
 </form>
-
+<button id="clearResultsBtn"
+  style="display:none;background:#4e65ac;color:#fff;border:none;
+  border-radius:0;padding:10px 26px;font-size:15px;font-weight:600;
+  margin-top:16px;cursor:pointer;">
+  ✖ Clear Results
+</button>
 <!-- ===== EMAIL INPUTS (outside Dropzone) ===== -->
 <div id="emailSection" style="margin-top:25px;">
   <label for="userEmail"
