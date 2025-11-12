@@ -1,12 +1,11 @@
 /**
  * AIVS Invoice Compliance Checker · Frontend Logic
- * ISO Timestamp: 2025-11-12T10:20:00Z
+ * ISO Timestamp: 2025-11-12T09:45:00Z
  * Author: AIVS Software Limited
  * Brand Colour: #4e65ac
  * Description:
  * Adds upload lock — user must press Clear before next upload,
- * hides uploader when report arrives, shows framed summary box,
- * and records files uploaded this session.
+ * hides uploader when report arrives, shows framed summary box.
  */
 
 Dropzone.autoDiscover = false;
@@ -27,22 +26,6 @@ const dz = new Dropzone("#invoiceDrop", {
     const dzElement = document.getElementById("invoiceDrop");
     const actorsDiv = document.getElementById("actors");
     const clearBtn = document.getElementById("clearResultsBtn");
-
-    // ✅ Session file list setup
-    const sessionFileList  = document.getElementById("sessionFileList");
-    const sessionFileItems = document.getElementById("sessionFileItems");
-    let uploadedFiles = JSON.parse(sessionStorage.getItem("uploadedFiles") || "[]");
-    renderSessionList();
-
-    function renderSessionList() {
-      if (uploadedFiles.length === 0) {
-        sessionFileItems.innerHTML = "<li style='color:#777;'>No files uploaded yet.</li>";
-      } else {
-        sessionFileItems.innerHTML = uploadedFiles
-          .map(name => `<li>${name}</li>`)
-          .join("");
-      }
-    }
 
     // ✅ create framed status box for uploader/parser
     const statusBox = document.createElement("div");
@@ -159,11 +142,6 @@ const dz = new Dropzone("#invoiceDrop", {
       `;
       statusBox.style.display = "block";  // show summary frame
       dzElement.style.display = "none";   // hide Dropzone
-
-      // ✅ Record uploaded file name in session list
-      uploadedFiles.push(file.name);
-      sessionStorage.setItem("uploadedFiles", JSON.stringify(uploadedFiles));
-      renderSessionList();
 
       let formattedAI = "";
       const r = response.aiReply || response;
