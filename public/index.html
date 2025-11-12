@@ -15,198 +15,192 @@ Single-step upload + automatic AI compliance report generation.
 <link rel="stylesheet" href="https://unpkg.com/dropzone@5/dist/min/dropzone.min.css">
 
 <style>
-:root { --aivs-blue:#4e65ac; }
+  :root { --aivs-blue:#4e65ac; }
 
-body{
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  background:#fafafa;
-  color:#222;
-  margin:0;
-  padding:20px 40px;
-}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:#fafafa;
+    color:#222;
+    margin:0;
+    padding:20px 40px;
+  }
 
-h1.page-title{
-  text-align:center;
-  color:var(--aivs-blue);
-  font-size:1.8em;
-  margin-bottom:24px;
-  font-weight:600;
-  border-bottom:2px solid var(--aivs-blue);
-  padding-bottom:6px;
-}
+  h1.page-title{
+    text-align:center;
+    color:var(--aivs-blue);
+    font-size:1.8em;
+    margin-bottom:12px;
+    font-weight:600;
+    border-bottom:2px solid var(--aivs-blue);
+    padding-bottom:6px;
+  }
 
-label{
-  display:block;
-  margin-top:12px;
-  margin-bottom:6px;
-  font-weight:600;
-  color:var(--aivs-blue);
-}
-select,input{ font-family:inherit; }
+  label{
+    display:block;
+    margin-top:12px;
+    margin-bottom:6px;
+    font-weight:600;
+    color:var(--aivs-blue);
+  }
+  select, input{ font-family:inherit; }
 
-select {
-  width:260px;
-  padding:8px 10px;
-  border:1.5px solid var(--aivs-blue);
-  border-radius:0;
-  background:#fff;
-  color:var(--aivs-blue);
-  font-weight:600;
-  font-size:14px;
-  appearance:none;
-  -webkit-appearance:none;
-  -moz-appearance:none;
-  background-image:url("data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath fill='%234e65ac' d='M0 0l4 5 4-5z'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;
-  background-position:right 10px center;
-  background-size:8px 5px;
-}
+  select{
+    width:260px;
+    padding:8px 10px;
+    border:1.5px solid var(--aivs-blue);
+    border-radius:0;
+    background:#fff;
+    color:#4e65ac;
+    font-weight:600;
+    font-size:14px;
+    appearance:none;
+    -webkit-appearance:none;
+    -moz-appearance:none;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath fill='%234e65ac' d='M0 0l4 5 4-5z'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 10px center;
+    background-size:8px 5px;
+  }
 
-select:focus, select:hover {
-  border-color:var(--aivs-blue);
-  box-shadow:0 0 0 1px var(--aivs-blue) inset;
-  outline:none;
-}
+  select:focus, select:hover {
+    border-color:var(--aivs-blue);
+    box-shadow:0 0 0 1px var(--aivs-blue) inset;
+    outline:none;
+  }
 
-/* --- Dropzone styling ------------------------------------------------ */
-.dropzone{
-  border:3px solid var(--aivs-blue);
-  border-radius:0;
-  background:#fff;
-  margin-top:25px;
-  min-height:180px;
-  color:var(--aivs-blue);
-  font-weight:700;
-  position:relative;
-  text-transform:uppercase;
-  letter-spacing:.6px;
-}
-.dropzone .dz-preview { display:none !important; }
-.dropzone .dz-button{
-  background:var(--aivs-blue);
-  color:#fff;
-  border:none;
-  border-radius:0;
-  padding:14px 34px;
-  cursor:pointer;
-  font-size:16px;
-}
-.dropzone .dz-button:hover{ background:#3c5399; }
+  /* --- Dropzone styling ------------------------------------------------ */
+  .dropzone{
+    border:3px solid var(--aivs-blue);
+    border-radius:0;
+    background:#fff;
+    margin-top:16px;
+    min-height:80px;
+    color:#4e65ac;
+    font-weight:700;
+    position:relative;
+    text-transform:uppercase;
+    letter-spacing:.6px;
+  }
+  .dropzone .dz-preview { display:none !important; }
+  .dropzone .dz-button{
+    background:var(--aivs-blue);
+    color:#fff;
+    border:none;
+    border-radius:0;
+    padding:14px 34px;
+    cursor:pointer;
+    font-size:16px;
+  }
+  .dropzone .dz-button:hover{ background:#3c5399; }
 
-#actors{
-  background:#fff;
-  border:2px solid var(--aivs-blue);
-  border-radius:0;
-  padding:16px;
-  margin-top:10px;
-}
-.actor{padding:10px;border-bottom:1px solid #ddd;}
-.actor span{color:var(--aivs-blue);font-weight:bold;}
+  #actors{
+    margin-top:10px;
+    background:#fff;
+    border:2px solid #4e65ac;
+    border-radius:0;
+    padding:16px;
+  }
+  .actor{padding:10px;border-bottom:1px solid #ddd;}
+  .actor span{color:var(--aivs-blue);font-weight:bold;}
 
-/* --- Footer styling ------------------------------------------------ */
-#aivs-footer{
-  margin-top:30px;
-  text-align:center;
-  font-size:12px;
-  color:#555;
-  border-top:1px solid #e7ebf3;
-  padding-top:10px;
-}
-#aivs-footer div{
-  margin-top:4px;
-  color:#777;
-}
+  /* --- Footer ---------------------------------------------------------- */
+  #aivs-footer{
+    margin-top:30px;
+    text-align:center;
+    font-size:12px;
+    color:#555;
+    border-top:1px solid #e7ebf3;
+    padding-top:10px;
+  }
+  #aivs-footer div{
+    margin-top:4px;
+    color:#777;
+  }
 </style>
 </head>
 
 <body>
-<h1 class="page-title">AIVS CIS Compliance Checker</h1>
+  <h2 class="page-title">AIVS CIS Compliance Checker</h2>
 
-<!-- ===== VAT / CIS SETTINGS ===== -->
-<form id="preQuestions">
-  <label>Project type (VAT category):</label>
-  <select id="vatCategory" name="vatCategory">
-    <option value="standard-20">Standard 20%</option>
-    <option value="reduced-5">Reduced 5%</option>
-    <option value="zero-rated-new-build">Zero-rated (new build)</option>
-    <option value="no-vat">No VAT (outside scope)</option>
-  </select>
+  <!-- ===== VAT / CIS SETTINGS ===== -->
+  <form id="preQuestions">
+    <label>Project type (VAT category):</label>
+    <select id="name="vatCategory">
+      <option value="standard-20">Standard 20%</option>
+      <option value="reduced-5">Reduced 5%</option>
+      <option value="zero-rated-new-build">Zero-rated (new build)</option>
+      <option value="no-vat">No VAT (outside scope)</option>
+    </select>
 
-  <label>End user/intermediary declaration on file?</label>
-  <select id="endUserConfirmed" name="endUserConfirmed">
-    <option value="false">No</option>
-    <option value="true">Yes</option>
-  </select>
+    <label>End user/intermediary declaration on file?</label>
+    <select id="endUserConfirmed" name="endUserConfirmed">
+      <option value="false">No</option>
+      <option value="true">Yes</option>
+    </select>
 
-  <label>Subcontractor CIS rate:</label>
-  <select id="cisRate" name="cisRate">
-    <option value="20">20%</option>
-    <option value="30">30%</option>
-    <option value="0">Gross payment status (0%)</option>
-  </select>
-</form>
+    <label>Subcontractor CIS rate:</label>
+    <select id="name="cisRate">
+      <option value="20">20%</option>
+      <option value="30">30%</option>
+      <option value="0">Gross payment status (0%)</option>
+    </select>
+  </form>
 
-<!-- ===== INVOICE UPLOAD ===== -->
-<form action="/check_invoice" class="dropzone" id="invoiceDrop">
-  <div class="dz-message">📄 Drop or click to upload invoice</div>
-</form>
+  <!-- ===== INVOICE UPLOAD + EMAIL FIELDS IN SAME FORM ===== -->
+  <form action="/check_invoice" class="dropzone" id="invoiceDrop" method="post" enctype="multipart/form-data">
+    <div class="dz-message">📄 Drop or click to upload invoice</div>
 
-<!-- ===== EMAIL INPUTS ===== -->
-<div id="emailSection" style="margin-top:25px;">
-  <label for="userEmail" style="display:block;margin-bottom:8px;font-weight:600;color:var(--aivs-blue);">
-    Email addresses (for report copies):
-  </label>
+    <!-- Put email fields *inside* the form so Dropzone sends them -->
+    <div id="emailSection" style="margin-top:16px; text-transform:none;">
+      <label for="userEmail">Email addresses (for report copies):</label>
+      <input type="email" id="userEmail" name="userEmail" placeholder="Primary email"
+             style="width:400px;padding:8px 10px;border:1.5px solid var(--aivs-blue);
+                    border-radius:0;background:#fff;color:#222;font-size:14px;font-weight:500;
+                    box-sizing:border-box;margin-top:6px;margin-bottom:10px;display:block;box-shadow:0 0 0 1px rgba(78,101,172,0.1);">
 
-  <input type="email" id="userEmail" name="userEmail" placeholder="Primary email"
-    style="width:400px;padding:8px 10px;border:1.5px solid var(--aivs-blue);
-    border-radius:0;background:#fff;color:#222;font-size:14px;font-weight:500;
-    box-sizing:border-box;margin-bottom:10px;display:block;
-    box-shadow:0 0 0 1px rgba(78,101,172,0.1);">
+      <input type="email" id="emailCopy1" name="emailCopy1" placeholder="Copy to (optional)"
+             style="width:400px;padding:8px 10px;border:1.5px solid var(--aivs-blue);
+                    border-radius:0;background:#fff;color:#222;font-size:14px;font-weight:500;
+                    box-sizing:border-box;margin-bottom:10px;display:block;box-shadow:0 0 0 1px rgba(78,101,172,0.1);">
 
-  <input type="email" id="emailCopy1" name="emailCopy1" placeholder="Copy to (optional)"
-    style="width:400px;padding:8px 10px;border:1.5px solid var(--aivs-blue);
-    border-radius:0;background:#fff;color:#222;font-size:14px;font-weight:500;
-    box-sizing:border-box;margin-bottom:10px;display:block;
-    box-shadow:0 0 0 1px rgba(78,101,172,0.1);">
+      <input type="email" id="emailCopy2" name="emailCopy2" placeholder="Copy to (optional)"
+             style="width:400px;padding:8px 10px;border:1.5px solid var(--aivs-blue);
+                    border-radius:0;background:#fff;color:#222;font-size:14px;font-weight:500;
+                    box-sizing:border-box;display:block;box-shadow:0 0 0 1px rgba(78,101,172,0.1);">
+    </div>
+  </form>
 
-  <input type="email" id="emailCopy2" name="emailCopy2" placeholder="Copy to (optional)"
-    style="width:400px;padding:8px 10px;border:1.5px solid var(--aivs-blue);
-    border-radius:0;background:#fff;color:#222;font-size:14px;font-weight:500;
-    box-sizing:border-box;display:block;
-    box-shadow:0 0 0 1px rgba(78,101,172,0.1);">
-</div>
+  <!-- ===== ACTION BUTTONS ===== -->
+  <button id="clearResultsBtn"
+    style="display:none;background:var(--aivs-blue);color:#fff;border:none;
+           border-radius:0;padding:10px 16px;font-size:15px;font-weight:600;
+           margin-top:16px;cursor:pointer;">
+    ✖️  Clear Results
+  </button>
 
-<!-- ===== ACTION BUTTONS ===== -->
-<button id="clearResultsBtn"
-  style="display:none;background:var(--aivs-blue);color:#fff;border:none;
-  border-radius:0;padding:10px 26px;font-size:15px;font-weight:600;
-  margin-top:16px;cursor:pointer;">
-  ✖ Clear Results
-</button>
+  <!-- ===== OUTPUT ===== -->
+  <div id="actors"></div>
 
-<!-- ===== OUTPUT ===== -->
-<div id="actors"></div>
-
-<!-- ===== FOOTER ===== -->
-<div id="aivs-footer">
-  <div>© AIVS Software Limited 2025 · All rights reserved.</div>
-  <div>
-    This report and invoice layout are generated by the AIVS CIS Compliance Checker
-    for internal advisory use. It does not constitute professional accounting or
-    legal advice.
+  <!-- ===== FOOTER ===== -->
+  <div id="aivs-footer">
+    <div>© AIVS Software Limited 2025 · All rights reserved.</div>
+    <div>
+      This report and invoice layout are generated by the AIVS CIS Compliance Checker
+      for internal advisory use. It does not constitute professional accounting or
+      legal advice.
+    </div>
+    <div>
+      Users should seek appropriate professional or HMRC guidance before acting on
+      any automated output. AIVS Software Limited accepts no liability for reliance
+      on this content without independent verification.
+    </div>
+    <div style="font-style:italic;">
+      Prepared for internal management advisory purposes only · Not for external
+      distribution.
+    </div>
   </div>
-  <div>
-    Users should seek appropriate professional or HMRC guidance before acting on
-    any automated output. AIVS Software Limited accepts no liability for reliance
-    on this content without independent verification.
-  </div>
-  <div style="font-style:italic;">
-    Prepared for internal management advisory purposes only · Not for external
-    distribution.
-  </div>
-</div>
 
-<script src="https://unpkg.com/dropzone@5/dist/min/dropzone.min.js"></script>
-<script src="invoice_check.js"></script>
+  <script src="https://unpkg.com/dropzone@5/dist/min/dropzone.min.js"></script>
+  <script src="invoice_check.js"></script>
 </body>
 </html>
