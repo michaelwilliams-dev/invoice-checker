@@ -1,6 +1,6 @@
 /**
  * AIVS Invoice Compliance Checker · Frontend Logic
- * ISO Timestamp: 2025-11-12T09:45:00Z
+ * ISO Timestamp: 2025-11-12T10:35:00Z
  * Author: AIVS Software Limited
  * Brand Colour: #4e65ac
  * Description:
@@ -112,10 +112,16 @@ const dz = new Dropzone("#invoiceDrop", {
 
     // ✅ Upload lock — block new uploads until Clear is pressed
     dzInstance.on("addedfile", function (file) {
+      // only one control point for addedfile
       if (!uploadAllowed) {
         dzInstance.removeFile(file);
         showWarning("Please clear results before uploading a new invoice.");
         return false;
+      }
+
+      // enforce single-file rule safely
+      if (dzInstance.files.length > 1) {
+        dzInstance.removeFile(dzInstance.files[0]);
       }
     });
 
@@ -198,10 +204,6 @@ ${JSON.stringify(response, null, 2)}
 
     dzInstance.on("error", (file, err) => {
       overlay.innerHTML = `<span style="color:#c0392b;">❌ Upload failed – ${err}</span>`;
-    });
-
-    dzInstance.on("addedfile", () => {
-      if (dzInstance.files.length > 1) dzInstance.removeFile(dzInstance.files[0]);
     });
   },
 });
