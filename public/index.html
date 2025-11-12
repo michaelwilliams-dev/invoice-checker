@@ -1,5 +1,6 @@
-<!--AIVS CIS Compliance Checker · HTML Frontend
-ISO Timestamp: 2025-11-11T22:55:00Z
+<!--
+AIVS CIS Compliance Checker · HTML Frontend
+ISO Timestamp: 2025-11-12T11:50:00Z
 Author: AIVS Software Limited
 Brand Colour: #4e65ac
 Description:
@@ -41,36 +42,32 @@ label{
   font-weight:600;
   color:var(--aivs-blue);
 }
-select,input{
-  font-family:inherit;
-}
-select{
+select,input{ font-family:inherit; }
+
 select {
   width:260px;
   padding:8px 10px;
-  border:1px solid var(--aivs-blue);
-  border-radius:0;
   border:1.5px solid var(--aivs-blue);
-  border-radius:0;              /* ← keeps square corners */
+  border-radius:0;
   background:#fff;
   color:var(--aivs-blue);
   font-weight:600;
   font-size:14px;
-  font-family:inherit;
-  appearance:none;              /* ← removes native rounded dropdown styling */
-  -webkit-appearance:none;      /* ← Safari fix */
-  -moz-appearance:none;         /* ← Firefox fix */
+  appearance:none;
+  -webkit-appearance:none;
+  -moz-appearance:none;
   background-image:url("data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath fill='%234e65ac' d='M0 0l4 5 4-5z'/%3E%3C/svg%3E");
   background-repeat:no-repeat;
-  background-position:right 10px center; /* adds subtle dropdown arrow */
+  background-position:right 10px center;
   background-size:8px 5px;
 }
-select:focus,select:hover{
+
 select:focus, select:hover {
   border-color:var(--aivs-blue);
   box-shadow:0 0 0 1px var(--aivs-blue) inset;
   outline:none;
 }
+
 /* --- Dropzone styling ------------------------------------------------ */
 .dropzone{
   border:3px solid var(--aivs-blue);
@@ -106,6 +103,7 @@ select:focus, select:hover {
 .actor{padding:10px;border-bottom:1px solid #ddd;}
 .actor span{color:var(--aivs-blue);font-weight:bold;}
 
+/* --- Footer styling ------------------------------------------------ */
 #aivs-footer{
   margin-top:30px;
   text-align:center;
@@ -114,7 +112,10 @@ select:focus, select:hover {
   border-top:1px solid #e7ebf3;
   padding-top:10px;
 }
-#aivs-footer div{margin-top:4px;color:#777;}
+#aivs-footer div{
+  margin-top:4px;
+  color:#777;
+}
 </style>
 </head>
 
@@ -150,10 +151,9 @@ select:focus, select:hover {
   <div class="dz-message">📄 Drop or click to upload invoice</div>
 </form>
 
-<!-- ===== EMAIL INPUTS (outside Dropzone) ===== -->
+<!-- ===== EMAIL INPUTS ===== -->
 <div id="emailSection" style="margin-top:25px;">
-  <label for="userEmail"
-    style="display:block;margin-bottom:8px;font-weight:600;color:var(--aivs-blue);">
+  <label for="userEmail" style="display:block;margin-bottom:8px;font-weight:600;color:var(--aivs-blue);">
     Email addresses (for report copies):
   </label>
 
@@ -183,15 +183,6 @@ select:focus, select:hover {
   margin-top:16px;cursor:pointer;">
   ✖ Clear Results
 </button>
-
-<!--
-<button id="sendEmailBtn"
-  style="background:var(--aivs-blue);color:#fff;border:none;border-radius:0;
-  padding:10px 26px;font-size:15px;font-weight:600;margin-top:12px;cursor:pointer;">
-  📧 Send to these emails
-</button>
--->
-
 
 <!-- ===== OUTPUT ===== -->
 <div id="actors"></div>
