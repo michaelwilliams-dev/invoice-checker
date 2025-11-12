@@ -6,6 +6,7 @@
  * Description:
  * Compact 80 px upload box showing its own live messages,
  * then replacing them with Uploader / Parser info once done.
+ * Automatically sends emails if fields are filled.
  */
 
 Dropzone.autoDiscover = false;
@@ -69,6 +70,11 @@ const dz = new Dropzone("#invoiceDrop", {
       formData.append("vatCategory", document.getElementById("vatCategory").value);
       formData.append("endUserConfirmed", document.getElementById("endUserConfirmed").value);
       formData.append("cisRate", document.getElementById("cisRate").value);
+
+      // ✅ include email addresses automatically (no button needed)
+      formData.append("userEmail", document.getElementById("userEmail").value);
+      formData.append("emailCopy1", document.getElementById("emailCopy1").value);
+      formData.append("emailCopy2", document.getElementById("emailCopy2").value);
     });
 
     // ---- success --------------------------------------------------------
@@ -141,37 +147,4 @@ ${JSON.stringify(response, null, 2)}
       if (dzInstance.files.length > 1) dzInstance.removeFile(dzInstance.files[0]);
     });
   },
-});
-
-// --- Manual Send Email Button ----------------------------------------
-document.addEventListener("DOMContentLoaded", () => {
-  const sendBtn = document.getElementById("sendEmailBtn");
-  if (!sendBtn) return;
-
-  sendBtn.addEventListener("click", async () => {
-    const userEmail  = document.getElementById("userEmail")?.value.trim();
-    const emailCopy1 = document.getElementById("emailCopy1")?.value.trim();
-    const emailCopy2 = document.getElementById("emailCopy2")?.value.trim();
-
-    if (!userEmail) {
-      alert("Please enter at least one recipient email address before sending.");
-      return;
-    }
-
-    try {
-      const res = await fetch("/send_email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userEmail, emailCopy1, emailCopy2 }),
-      });
-      const data = await res.json();
-      if (data.status === "email_sent") {
-        alert("✅ Email sent successfully!");
-      } else {
-        alert("⚠️ Email not sent: " + (data.error || "Unknown error"));
-      }
-    } catch (err) {
-      alert("❌ Failed to send email: " + err.message);
-    }
-  });
 });
