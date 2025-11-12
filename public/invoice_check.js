@@ -1,6 +1,6 @@
 /**
  * AIVS Invoice Compliance Checker · Frontend Logic
- * ISO Timestamp: 2025-11-12T11:10:00Z
+ * ISO Timestamp: 2025-11-12T11:22:00Z
  * Author: AIVS Software Limited
  * Brand Colour: #4e65ac
  * Description:
@@ -27,9 +27,9 @@ const dz = new Dropzone("#invoiceDrop", {
     const actorsDiv = document.getElementById("actors");
     const clearBtn = document.getElementById("clearResultsBtn");
 
-    // ✅ make sure Dropzone stays above surrounding panels for drag events
+    // ✅ keep Dropzone above other panels for drag events
     dzElement.style.position = "relative";
-    dzElement.style.zIndex = "50";
+    dzElement.style.zIndex = "999"; // higher than nearby boxes
 
     // ✅ create framed status box for uploader/parser
     const statusBox = document.createElement("div");
@@ -64,9 +64,9 @@ const dz = new Dropzone("#invoiceDrop", {
       statusBox.style.display = "none";       // ✅ hide summary frame
     });
 
-    // compact fixed height
-    dzElement.style.height = "80px";
-    dzElement.style.minHeight = "80px";
+    // ❌ remove inline 80px sizing — let CSS min-height (180px) handle area
+    // dzElement.style.height = "80px";
+    // dzElement.style.minHeight = "80px";
     dzElement.style.overflow = "hidden";
 
     // create inner message layer
@@ -84,12 +84,12 @@ const dz = new Dropzone("#invoiceDrop", {
       font-weight:600;
       font-size:14px;
       text-align:center;
-      z-index:10;
+      z-index:0;                 /* sit below Dropzone for drag events */
       transition:opacity 0.3s ease;
     `;
     overlay.textContent = "📄 Drop or click to upload invoice";
     dzElement.appendChild(overlay);
-    overlay.style.pointerEvents = "none";  // ✅ allow clicks and drops to reach Dropzone
+    overlay.style.pointerEvents = "none";     // ✅ let drag/click pass through
 
     // ✅ Small transient warning message element
     const warn = document.createElement("div");
@@ -116,13 +116,11 @@ const dz = new Dropzone("#invoiceDrop", {
 
     // ✅ Upload lock — block new uploads until Clear is pressed
     dzInstance.on("addedfile", function (file) {
-      // only one control point for addedfile
       if (!uploadAllowed) {
         dzInstance.removeFile(file);
         showWarning("Please clear results before uploading a new invoice.");
         return false;
       }
-
       // enforce single-file rule safely
       if (dzInstance.files.length > 1) {
         dzInstance.removeFile(dzInstance.files[0]);
@@ -135,7 +133,7 @@ const dz = new Dropzone("#invoiceDrop", {
       formData.append("vatCategory", document.getElementById("vatCategory").value);
       formData.append("endUserConfirmed", document.getElementById("endUserConfirmed").value);
       formData.append("cisRate", document.getElementById("cisRate").value);
-      // --- include email addresses for backend Mailjet send ---------------
+      // include email addresses for backend Mailjet send
       formData.append("userEmail", document.getElementById("userEmail").value);
       formData.append("emailCopy1", document.getElementById("emailCopy1").value);
       formData.append("emailCopy2", document.getElementById("emailCopy2").value);
@@ -143,7 +141,7 @@ const dz = new Dropzone("#invoiceDrop", {
 
     // ---- success --------------------------------------------------------
     dzInstance.on("success", (file, response) => {
-      // ✅ show framed summary instead of keeping overlay
+      // show framed summary instead of keeping overlay
       statusBox.innerHTML = `
         <div><strong style="color:#4e65ac;">UPLOADER:</strong> ${file.name}</div>
         <div><strong style="color:#4e65ac;">PARSER:</strong> ${
@@ -202,8 +200,8 @@ ${JSON.stringify(response, null, 2)}
           ${response.timestamp || "—"}
         </div>`;
 
-      clearBtn.style.display = "inline-block"; // ✅ show Clear
-      uploadAllowed = false;                   // ✅ lock until cleared
+      clearBtn.style.display = "inline-block"; // show Clear
+      uploadAllowed = false;                   // lock until cleared
     });
 
     dzInstance.on("error", (file, err) => {
