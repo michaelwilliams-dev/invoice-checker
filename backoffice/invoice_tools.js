@@ -7,7 +7,6 @@
 
 import pdf from "pdf-parse";
 import OpenAI from "openai";
-import { computeCIS } from "./cis_rules.js";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
