@@ -21,6 +21,8 @@ const META_PATH = "/mnt/data/chunks_metadata.final.jsonl";
 
 let metadata = [];
 
+console.log("🔍 Loading FAISS index for Invoice Checker…");
+
 if (fs.existsSync(META_PATH)) {
   try {
     metadata = fs
@@ -51,7 +53,7 @@ function cosine(a, b) {
 }
 
 /* -------------------------------------------------------------
-   SAFE FAISS SEARCH — NEVER BLOCKS UPLOAD
+   SAFE FAISS SEARCH — ALWAYS RETURNS, NEVER CRASHES
 ------------------------------------------------------------- */
 async function searchFaissSafe(text) {
   try {
@@ -71,17 +73,17 @@ async function searchFaissSafe(text) {
 
     const data = await resp.json();
 
+    // HARD FAIL CHECK — SHOW REAL EMBEDDING ERROR
+    if (!data || !data.data || !Array.isArray(data.data)) {
+      console.log("❌ EMBEDDING API RESPONSE:", JSON.stringify(data, null, 2));
+      return [];
+    }
 
-   // HARD FAIL CHECK — SHOW FULL ERROR
-   if (!data || !data.data || !Array.isArray(data.data)) {
-     console.log("❌ EMBEDDING API RESPONSE:", JSON.stringify(data, null, 2));
-     return [];
-   }
-   
-   if (!data.data.length || !data.data[0].embedding) {
-     console.log("❌ EMBEDDING API RESPONSE:", JSON.stringify(data, null, 2));
-     return [];
-   }
+    if (!data.data.length || !data.data[0].embedding) {
+      console.log("❌ EMBEDDING API RESPONSE:", JSON.stringify(data, null, 2));
+      return [];
+    }
+
     const qVec = data.data[0].embedding;
 
     const scored = metadata.map((m) => ({
@@ -90,6 +92,7 @@ async function searchFaissSafe(text) {
     }));
 
     return scored.sort((a, b) => b.score - a.score).slice(0, 6);
+
   } catch (err) {
     console.log("⚠️ FAISS error (non-blocking):", err.message);
     return [];
@@ -126,7 +129,7 @@ router.post("/check_invoice", async (req, res) => {
 
     const parsed = await parseInvoice(file.data);
 
-    console.log("🔎 Running FAISS (safe)…");
+    console.log("🔎 Running FAISS (safe)...");
     const faissHits = await searchFaissSafe(parsed.text);
 
     const faissContext = faissHits.map((h) => h.text).join("\n\n");
@@ -135,19 +138,17 @@ router.post("/check_invoice", async (req, res) => {
 
     const { docPath, pdfPath, timestamp } = await saveReportFiles(aiReply);
 
-    await sendReportEmail(
-      req.body.userEmail,
-      [req.body.emailCopy1, req.body.emailCopy2],
-      docPath,
-      pdfPath,
-      timestamp
-    );
+    const to = req.body.userEmail;
+    const ccList = [req.body.emailCopy1, req.body.emailCopy2];
+
+    await sendReportEmail(to, ccList, docPath, pdfPath, timestamp);
 
     res.json({
       parserNote: parsed.parserNote,
       aiReply,
       timestamp: new Date().toISOString(),
     });
+
   } catch (err) {
     console.error("❌ /check_invoice error:", err.message);
     res
