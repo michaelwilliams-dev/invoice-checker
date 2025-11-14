@@ -1,6 +1,6 @@
 /**
  * AIVS Invoice Compliance Checker · Express Route
- * ISO Timestamp: 2025-11-14T12:30:00Z
+ * ISO Timestamp: 2025-11-14T12:40:00Z
  * Author: AIVS Software Limited
  */
 
@@ -16,10 +16,10 @@ const router = express.Router();
 const openai = new OpenAI(process.env.OPENAI_API_KEY);
 
 /* -------------------------------------------------------------
-   DIRECT FAISS LOADING (NO vector_store.js REQUIRED)
+   LOAD FAISS METADATA
 ------------------------------------------------------------- */
-const META_PATH = "/mnt/data/chunks_metadata.final.jsonl";
 
+const META_PATH = "/mnt/data/chunks_metadata.final.jsonl";
 let metadata = [];
 
 try {
@@ -29,38 +29,72 @@ try {
     .trim()
     .split("\n")
     .map((l) => JSON.parse(l));
+
   console.log("✅ Loaded FAISS chunks:", metadata.length);
 } catch (err) {
   console.error("❌ Failed to load FAISS metadata:", err.message);
   metadata = [];
 }
 
-/* Cosine similarity */
+/* -------------------------------------------------------------
+   COSINE SIMILARITY
+------------------------------------------------------------- */
+
 function cosine(a, b) {
-  let dot = 0, na = 0, nb = 0;
+  let dot = 0,
+    na = 0,
+    nb = 0;
+
   for (let i = 0; i < a.length; i++) {
     dot += a[i] * b[i];
     na += a[i] * a[i];
     nb += b[i] * b[i];
   }
+
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
 
-/* Embed query text (ada-002) */
+/* -------------------------------------------------------------
+   SAFE EMBEDDING FUNCTION (NO CRASHES)
+------------------------------------------------------------- */
+
 async function embedQuery(text) {
-  const emb = await openai.embeddings.create({
-    model: "text-embedding-ada-002",
-    input: text,
-  });
-  return emb.data[0].embedding;
+  try {
+    const resp = await openai.embeddings.create({
+      model: "text-embedding-ada-002",
+      input: text,
+    });
+
+    if (!resp?.data?.[0]?.embedding) {
+      console.log("❌ OpenAI embedding error:", JSON.stringify(resp, null, 2));
+      return null;
+    }
+
+    return resp.data[0].embedding;
+
+  } catch (err) {
+    console.log("❌ OpenAI embedding exception:", err.message);
+    return null;
+  }
 }
 
-/* FAISS search (fully inline, no imports) */
+/* -------------------------------------------------------------
+   SAFE FAISS SEARCH (ALWAYS RETURNS, NEVER CRASHES)
+------------------------------------------------------------- */
+
 async function searchFaiss(text) {
   try {
-    if (!metadata.length) return [];
+    if (!metadata.length) {
+      console.log("⚠️ No FAISS metadata available.");
+      return [];
+    }
 
     const qVec = await embedQuery(text);
+
+    if (!qVec) {
+      console.log("⚠️ No embedding returned. FAISS skipped.");
+      return [];
+    }
 
     const scored = metadata.map((m) => ({
       text: m.text,
@@ -85,11 +119,15 @@ router.use(
   })
 );
 
+/* -------------------------------------------------------------
+   MAIN ROUTE — FAISS ENABLED (SAFE)
+------------------------------------------------------------- */
+
 router.post("/check_invoice", async (req, res) => {
   try {
-    console.log("🟢 /check_invoice hit");
+    console.log("🟢 /check_invoice HIT");
 
-    if (!req.files?.file) throw new Error("No file uploaded");
+    if (!req.files?.file) throw new Error("No file uploaded.");
 
     const file = req.files.file;
 
@@ -99,25 +137,37 @@ router.post("/check_invoice", async (req, res) => {
       cisRate: req.body.cisRate,
     };
 
+    /* Parse invoice */
     const parsed = await parseInvoice(file.data);
 
+    /* FAISS search */
     console.log("🔎 Running FAISS search…");
+
     const matches = await searchFaiss(parsed.text);
+    console.log("🔍 Raw FAISS matches:", matches.length);
+    console.log(
+      "🔍 Top match preview:",
+      matches[0]?.text?.slice(0, 200) || "NONE"
+    );
 
     const filtered = matches.filter((m) => m.score >= 0.03);
-    console.log("📌 FAISS chunks returned:", filtered.length);
+    console.log("📌 FAISS chunks used:", filtered.length);
 
     const faissContext = filtered.map((m) => m.text).join("\n\n");
 
+    /* AI analysis */
     const aiReply = await analyseInvoice(parsed.text, flags, faissContext);
 
+    /* Build reports */
     const { docPath, pdfPath, timestamp } = await saveReportFiles(aiReply);
 
-    const to = req.body.userEmail;
-    const ccList = [req.body.emailCopy1, req.body.emailCopy2];
+    /* Email */
+    const to = req.body.userEmail || "";
+    const ccList = [req.body.emailCopy1, req.body.emailCopy2].filter(Boolean);
 
     await sendReportEmail(to, ccList, docPath, pdfPath, timestamp);
 
+    /* Response */
     res.json({
       parserNote: parsed.parserNote,
       aiReply,
