@@ -7,97 +7,26 @@
 
 import express from "express";
 import fileUpload from "express-fileupload";
-import fs from "fs";
-import fetch from "node-fetch";
 
 import { parseInvoice, analyseInvoice } from "../invoice_tools.js";
 import { saveReportFiles, sendReportEmail } from "../../server.js";
 
 /* -------------------------------------------------------------
-   FAISS LOADER
+   IMPORT THE WORKING FAISS IMPLEMENTATION FROM ACCOUNTING PRO
 ------------------------------------------------------------- */
-const INDEX_PATH = "/mnt/data/vector.index";
-const META_PATH = "/mnt/data/chunks_metadata.final.jsonl";
+import { loadIndex, searchIndex } from "../../vector_store.js";
 
-let metadata = [];
+let faissIndex = null;
 
-console.log("🔍 Loading FAISS index for Invoice Checker…");
-
-if (fs.existsSync(META_PATH)) {
+(async () => {
   try {
-    metadata = fs
-      .readFileSync(META_PATH, "utf-8")
-      .split("\n")
-      .filter(Boolean)
-      .map(JSON.parse);
-    console.log("✅ FAISS metadata loaded:", metadata.length);
-  } catch (e) {
-    console.error("❌ Failed loading FAISS metadata:", e.message);
-    metadata = [];
-  }
-} else {
-  console.error("❌ No metadata file found. FAISS disabled.");
-}
-
-/* Cosine similarity */
-function cosine(a, b) {
-  let dot = 0,
-    na = 0,
-    nb = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    na += a[i] * a[i];
-    nb += b[i] * b[i];
-  }
-  return dot / (Math.sqrt(na) * Math.sqrt(nb));
-}
-
-/* -------------------------------------------------------------
-   SAFE FAISS SEARCH — ALWAYS RETURNS, NEVER CRASHES
-------------------------------------------------------------- */
-async function searchFaissSafe(text) {
-  try {
-    if (metadata.length === 0) return [];
-
-    const resp = await fetch("https://api.openai.com/v1/embeddings", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "text-embedding-ada-002",
-        input: text,
-      }),
-    });
-
-    const data = await resp.json();
-
-    // HARD FAIL CHECK — SHOW REAL EMBEDDING ERROR
-    if (!data || !data.data || !Array.isArray(data.data)) {
-      console.log("❌ EMBEDDING API RESPONSE:", JSON.stringify(data, null, 2));
-      return [];
-    }
-
-    if (!data.data.length || !data.data[0].embedding) {
-      console.log("❌ EMBEDDING API RESPONSE:", JSON.stringify(data, null, 2));
-      return [];
-    }
-
-    const qVec = data.data[0].embedding;
-
-    const scored = metadata.map((m) => ({
-      text: m.text,
-      score: cosine(qVec, m.embedding),
-    }));
-
-    return scored.sort((a, b) => b.score - a.score).slice(0, 6);
-
+    console.log("📦 Preloading FAISS index (same logic as Accounting Pro)...");
+    faissIndex = await loadIndex(10000);
+    console.log(`✅ Loaded ${faissIndex.length} FAISS vectors.`);
   } catch (err) {
-    console.log("⚠️ FAISS error (non-blocking):", err.message);
-    return [];
+    console.error("❌ Failed to load FAISS index:", err.message);
   }
-}
+})();
 
 /* ------------------------------------------------------------- */
 
@@ -111,13 +40,14 @@ router.use(
   })
 );
 
+/* -------------------------------------------------------------
+   MAIN ROUTE — FAISS ENABLED (ACCOUNTING-PRO METHOD)
+------------------------------------------------------------- */
 router.post("/check_invoice", async (req, res) => {
   try {
-    console.log("🟢 /check_invoice hit");
+    console.log("🟢 /check_invoice");
 
-    if (!req.files || !req.files.file) {
-      throw new Error("No invoice file received");
-    }
+    if (!req.files?.file) throw new Error("No file uploaded");
 
     const file = req.files.file;
 
@@ -129,13 +59,28 @@ router.post("/check_invoice", async (req, res) => {
 
     const parsed = await parseInvoice(file.data);
 
-    console.log("🔎 Running FAISS (safe)...");
-    const faissHits = await searchFaissSafe(parsed.text);
+    /* ---------------------------------------
+       FAISS SEARCH (from Accounting Pro)
+    -----------------------------------------*/
+    let faissContext = "";
+    try {
+      console.log("🔎 Running FAISS search…");
+      const matches = await searchIndex(parsed.text, faissIndex);
+      const filtered = matches.filter((m) => m.score >= 0.03);
+      console.log("📌 FAISS chunks returned:", filtered.length);
+      faissContext = filtered.map((m) => m.text).join("\n\n");
+    } catch (err) {
+      console.log("⚠️ FAISS search error:", err.message);
+    }
 
-    const faissContext = faissHits.map((h) => h.text).join("\n\n");
-
+    /* ---------------------------------------
+       ANALYSIS
+    -----------------------------------------*/
     const aiReply = await analyseInvoice(parsed.text, flags, faissContext);
 
+    /* ---------------------------------------
+       REPORT + EMAIL
+    -----------------------------------------*/
     const { docPath, pdfPath, timestamp } = await saveReportFiles(aiReply);
 
     const to = req.body.userEmail;
@@ -143,9 +88,13 @@ router.post("/check_invoice", async (req, res) => {
 
     await sendReportEmail(to, ccList, docPath, pdfPath, timestamp);
 
+    /* ---------------------------------------
+       RESPONSE
+    -----------------------------------------*/
     res.json({
       parserNote: parsed.parserNote,
       aiReply,
+      faissChunks: faissContext.length,
       timestamp: new Date().toISOString(),
     });
 
