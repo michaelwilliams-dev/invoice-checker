@@ -71,11 +71,17 @@ async function searchFaissSafe(text) {
 
     const data = await resp.json();
 
-    if (!data?.data?.[0]?.embedding) {
-      console.log("⚠️ Embedding failed, skipping FAISS:", JSON.stringify(data));
-      return [];
-    }
 
+   // HARD FAIL CHECK — SHOW FULL ERROR
+   if (!data || !data.data || !Array.isArray(data.data)) {
+     console.log("❌ EMBEDDING API RESPONSE:", JSON.stringify(data, null, 2));
+     return [];
+   }
+   
+   if (!data.data.length || !data.data[0].embedding) {
+     console.log("❌ EMBEDDING API RESPONSE:", JSON.stringify(data, null, 2));
+     return [];
+   }
     const qVec = data.data[0].embedding;
 
     const scored = metadata.map((m) => ({
