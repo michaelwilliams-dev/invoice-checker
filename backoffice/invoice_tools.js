@@ -55,76 +55,51 @@ function decideVatAndDRC(text, flags) {
 ------------------------------------------------------------- */
 
 export async function analyseInvoice(text, flags, faissContext = "") {
-  // 1) Deterministic VAT/DRC
   const vatDecision = decideVatAndDRC(text, flags);
 
-  // 2) Deterministic CIS
-  const labour = Number(flags.labour || 0);
-  const materials = Number(flags.materials || 0);
-  const cisRate = Number(flags.cisRate || 20);
+  const prompt = `
+You are a UK accounting compliance expert (HMRC CIS & VAT).
+Use the user-supplied context below to check this invoice.
 
-  const cisResult = computeCIS({
-    labourAmount: labour,
-    materialsAmount: materials,
-    cisRate,
-    vatCategory: flags.vatCategory,
-    endUserConfirmed: flags.endUserConfirmed === "true",
-    isConstruction: true
-  });
+Context:
+- VAT category: ${vatDecision.vatLabel}
+- DRC applies: ${vatDecision.drc ? "Yes" : "No"}
+- CIS rate: ${flags.cisRate}%
+- Reason: ${vatDecision.reason}
 
-  // 3) Build structured system message for LLM
-  const systemPrompt = `
-You are a UK CIS & VAT compliance assistant.
+Check:
+1. Whether VAT and DRC treatment are correct.
+2. Whether CIS wording is correct for the labour element.
+3. Whether required wording is present or missing.
+4. Provide corrected wording and compliance notes.
+5. Output a corrected invoice layout using the provided HTML template.
 
-Use ONLY the deterministic CIS and VAT computations below.
-DO NOT invent numbers.
-DO NOT alter CIS or VAT calculations.
-
-CIS Computation:
-${JSON.stringify(cisResult, null, 2)}
-
-VAT/DRC Decision:
-${JSON.stringify(vatDecision, null, 2)}
-
-FAISS Context:
-${faissContext || "None"}
-
-Your tasks:
-1. Explain CIS treatment and why it applies or not.
-2. Explain VAT/DRC treatment.
-3. Identify missing required wording.
-4. Provide corrected invoice wording where necessary.
-5. Populate the JSON fields exactly as requested by the user:
-
+Return JSON ONLY:
 {
   "vat_check": "...",
   "cis_check": "...",
   "required_wording": "...",
-  "corrected_invoice": "<HTML invoice layout>",
+  "corrected_invoice": "<HTML invoice>",
   "summary": "..."
 }
 
-ONLY return JSON.
+Invoice text:
+${text}
 `;
 
   const res = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     response_format: { type: "json_object" },
-    messages: [{ role: "system", content: systemPrompt }]
+    messages: [{ role: "user", content: prompt }]
   });
 
-  // 4) Parse JSON returned by LLM (safe)
   try {
     const result = JSON.parse(res.choices[0].message.content);
 
-    // Replace "No VAT" with correct zero-rated wording
+    // Replace incorrect wording automatically
     if (result.corrected_invoice && result.corrected_invoice.includes("No VAT")) {
       result.corrected_invoice = result.corrected_invoice.replace(/No VAT/gi, "Zero-rated (0 %)");
     }
-
-    // Attach deterministic CIS + VAT to output for audit
-    result.cis_engine = cisResult;
-    result.vat_engine = vatDecision;
 
     return result;
 
