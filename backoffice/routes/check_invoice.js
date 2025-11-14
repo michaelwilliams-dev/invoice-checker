@@ -7,34 +7,35 @@
 
 import express from "express";
 import fileUpload from "express-fileupload";
-
-/* Analysis Imports */
-import { parseInvoice, analyseInvoice } from "../invoice_tools.js";
-
-/* Report + Email Imports */
-import { saveReportFiles, sendReportEmail } from "../../server.js";
-
-/* -------------------------------------------------------------
-   FAISS + Embeddings (REST method — version-proof)
-------------------------------------------------------------- */
 import fs from "fs";
 import fetch from "node-fetch";
 
+import { parseInvoice, analyseInvoice } from "../invoice_tools.js";
+import { saveReportFiles, sendReportEmail } from "../../server.js";
+
+/* -------------------------------------------------------------
+   FAISS LOADER
+------------------------------------------------------------- */
 const INDEX_PATH = "/mnt/data/vector.index";
 const META_PATH = "/mnt/data/chunks_metadata.final.jsonl";
 
-console.log("🔍 Loading FAISS index for Invoice Checker…");
+let metadata = [];
 
-if (!fs.existsSync(INDEX_PATH)) console.error("❌ Missing vector.index");
-if (!fs.existsSync(META_PATH)) console.error("❌ Missing chunks_metadata");
-
-const metadata = fs
-  .readFileSync(META_PATH, "utf-8")
-  .split("\n")
-  .filter(Boolean)
-  .map(JSON.parse);
-
-console.log("✅ FAISS metadata loaded. Chunks:", metadata.length);
+if (fs.existsSync(META_PATH)) {
+  try {
+    metadata = fs
+      .readFileSync(META_PATH, "utf-8")
+      .split("\n")
+      .filter(Boolean)
+      .map(JSON.parse);
+    console.log("✅ FAISS metadata loaded:", metadata.length);
+  } catch (e) {
+    console.error("❌ Failed loading FAISS metadata:", e.message);
+    metadata = [];
+  }
+} else {
+  console.error("❌ No metadata file found. FAISS disabled.");
+}
 
 /* Cosine similarity */
 function cosine(a, b) {
@@ -49,34 +50,44 @@ function cosine(a, b) {
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
 
-/* REST-based embedding (works on all SDK versions) */
-async function searchFaiss(queryText, topK = 6) {
-  const resp = await fetch("https://api.openai.com/v1/embeddings", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: "text-embedding-ada-002",
-      input: queryText,
-    }),
-  });
+/* -------------------------------------------------------------
+   SAFE FAISS SEARCH — NEVER BLOCKS UPLOAD
+------------------------------------------------------------- */
+async function searchFaissSafe(text) {
+  try {
+    if (metadata.length === 0) return [];
 
-  const data = await resp.json();
+    const resp = await fetch("https://api.openai.com/v1/embeddings", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "text-embedding-ada-002",
+        input: text,
+      }),
+    });
 
-  if (!data.data || !data.data[0] || !data.data[0].embedding) {
-    throw new Error("Embedding failed: " + JSON.stringify(data));
+    const data = await resp.json();
+
+    if (!data?.data?.[0]?.embedding) {
+      console.log("⚠️ Embedding failed, skipping FAISS:", JSON.stringify(data));
+      return [];
+    }
+
+    const qVec = data.data[0].embedding;
+
+    const scored = metadata.map((m) => ({
+      text: m.text,
+      score: cosine(qVec, m.embedding),
+    }));
+
+    return scored.sort((a, b) => b.score - a.score).slice(0, 6);
+  } catch (err) {
+    console.log("⚠️ FAISS error (non-blocking):", err.message);
+    return [];
   }
-
-  const qVec = data.data[0].embedding;
-
-  const scored = metadata.map((m) => ({
-    text: m.text,
-    score: cosine(qVec, m.embedding),
-  }));
-
-  return scored.sort((a, b) => b.score - a.score).slice(0, topK);
 }
 
 /* ------------------------------------------------------------- */
@@ -93,9 +104,11 @@ router.use(
 
 router.post("/check_invoice", async (req, res) => {
   try {
-    console.log("🟢 /check_invoice endpoint hit", req.files);
+    console.log("🟢 /check_invoice hit");
 
-    if (!req.files?.file) throw new Error("No file uploaded");
+    if (!req.files || !req.files.file) {
+      throw new Error("No invoice file received");
+    }
 
     const file = req.files.file;
 
@@ -107,12 +120,8 @@ router.post("/check_invoice", async (req, res) => {
 
     const parsed = await parseInvoice(file.data);
 
-    console.log("🔎 Running FAISS search…");
-    const faissHits = await searchFaiss(parsed.text, 6);
-    console.log(
-      "📌 FAISS top scores:",
-      faissHits.map((h) => h.score.toFixed(3))
-    );
+    console.log("🔎 Running FAISS (safe)…");
+    const faissHits = await searchFaissSafe(parsed.text);
 
     const faissContext = faissHits.map((h) => h.text).join("\n\n");
 
@@ -120,9 +129,13 @@ router.post("/check_invoice", async (req, res) => {
 
     const { docPath, pdfPath, timestamp } = await saveReportFiles(aiReply);
 
-    const to = req.body.userEmail;
-    const ccList = [req.body.emailCopy1, req.body.emailCopy2];
-    await sendReportEmail(to, ccList, docPath, pdfPath, timestamp);
+    await sendReportEmail(
+      req.body.userEmail,
+      [req.body.emailCopy1, req.body.emailCopy2],
+      docPath,
+      pdfPath,
+      timestamp
+    );
 
     res.json({
       parserNote: parsed.parserNote,
