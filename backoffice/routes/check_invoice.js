@@ -3,42 +3,30 @@
  * ISO Timestamp: 2025-11-14T09:00:00Z
  * Author: AIVS Software Limited
  * Brand Colour: #4e65ac
- *
- * Description:
- * Handles file uploads and passes them to the AIVS invoice compliance
- * analysis functions. Supports CIS and VAT (DRC/zero-rated) logic.
  */
 
 import express from "express";
 import fileUpload from "express-fileupload";
 
-/* Existing Analysis Imports */
+/* Analysis Imports */
 import { parseInvoice, analyseInvoice } from "../invoice_tools.js";
 
 /* Report + Email Imports */
 import { saveReportFiles, sendReportEmail } from "../../server.js";
 
 /* -------------------------------------------------------------
-   FAISS + OpenAI Embedding Loader (SDK-COMPATIBLE)
+   FAISS + Embeddings (REST method — version-proof)
 ------------------------------------------------------------- */
 import fs from "fs";
-import OpenAI from "openai";
+import fetch from "node-fetch";
 
-const openai = new OpenAI(process.env.OPENAI_API_KEY);
-
-// Hard paths to your duplicated FAISS index on Invoice Checker Render disk
 const INDEX_PATH = "/mnt/data/vector.index";
 const META_PATH = "/mnt/data/chunks_metadata.final.jsonl";
 
-/* Load FAISS metadata once */
 console.log("🔍 Loading FAISS index for Invoice Checker…");
 
-if (!fs.existsSync(INDEX_PATH)) {
-  console.error("❌ Missing vector.index in /mnt/data");
-}
-if (!fs.existsSync(META_PATH)) {
-  console.error("❌ Missing chunks_metadata.final.jsonl in /mnt/data");
-}
+if (!fs.existsSync(INDEX_PATH)) console.error("❌ Missing vector.index");
+if (!fs.existsSync(META_PATH)) console.error("❌ Missing chunks_metadata");
 
 const metadata = fs
   .readFileSync(META_PATH, "utf-8")
@@ -48,7 +36,7 @@ const metadata = fs
 
 console.log("✅ FAISS metadata loaded. Chunks:", metadata.length);
 
-/* --- Simple cosine similarity --- */
+/* Cosine similarity */
 function cosine(a, b) {
   let dot = 0,
     na = 0,
@@ -61,14 +49,27 @@ function cosine(a, b) {
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
 
-/* --- FAISS Search using OLD OpenAI SDK syntax --- */
+/* REST-based embedding (works on all SDK versions) */
 async function searchFaiss(queryText, topK = 6) {
-  const emb = await openai.Embeddings.create({
-    model: "text-embedding-ada-002",
-    input: queryText,
+  const resp = await fetch("https://api.openai.com/v1/embeddings", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "text-embedding-ada-002",
+      input: queryText,
+    }),
   });
 
-  const qVec = emb.data[0].embedding;
+  const data = await resp.json();
+
+  if (!data.data || !data.data[0] || !data.data[0].embedding) {
+    throw new Error("Embedding failed: " + JSON.stringify(data));
+  }
+
+  const qVec = data.data[0].embedding;
 
   const scored = metadata.map((m) => ({
     text: m.text,
@@ -82,7 +83,6 @@ async function searchFaiss(queryText, topK = 6) {
 
 const router = express.Router();
 
-// Enable invoice upload handling
 router.use(
   fileUpload({
     parseNested: true,
@@ -95,10 +95,6 @@ router.post("/check_invoice", async (req, res) => {
   try {
     console.log("🟢 /check_invoice endpoint hit", req.files);
 
-    try {
-      console.log("🧭 TRACE req.body:", JSON.stringify(req.body, null, 2));
-    } catch {}
-
     if (!req.files?.file) throw new Error("No file uploaded");
 
     const file = req.files.file;
@@ -109,10 +105,8 @@ router.post("/check_invoice", async (req, res) => {
       cisRate: req.body.cisRate,
     };
 
-    // Parse invoice
     const parsed = await parseInvoice(file.data);
 
-    // --- FAISS search ---
     console.log("🔎 Running FAISS search…");
     const faissHits = await searchFaiss(parsed.text, 6);
     console.log(
@@ -122,13 +116,10 @@ router.post("/check_invoice", async (req, res) => {
 
     const faissContext = faissHits.map((h) => h.text).join("\n\n");
 
-    // Analyse with FAISS context
     const aiReply = await analyseInvoice(parsed.text, flags, faissContext);
 
-    // Save Word + PDF
     const { docPath, pdfPath, timestamp } = await saveReportFiles(aiReply);
 
-    // Email send
     const to = req.body.userEmail;
     const ccList = [req.body.emailCopy1, req.body.emailCopy2];
     await sendReportEmail(to, ccList, docPath, pdfPath, timestamp);
@@ -138,14 +129,11 @@ router.post("/check_invoice", async (req, res) => {
       aiReply,
       timestamp: new Date().toISOString(),
     });
-
-    return;
   } catch (err) {
     console.error("❌ /check_invoice error:", err.message);
     res
       .status(500)
       .json({ error: err.message, timestamp: new Date().toISOString() });
-    return;
   }
 });
 
