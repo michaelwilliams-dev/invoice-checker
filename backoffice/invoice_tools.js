@@ -1,6 +1,6 @@
 /**
  * AIVS Invoice Compliance Checker · Parsing & Analysis Tools
- * ISO Timestamp: 2025-11-09T18:30:00Z
+ * ISO Timestamp: 2025-11-18T12:00:00Z
  * Author: AIVS Software Limited
  * Brand Colour: #4e65ac
  */
@@ -49,6 +49,13 @@ export async function analyseInvoice(text, flags) {
 You are a UK accounting compliance expert (HMRC CIS & VAT).
 Use the user-supplied context below to check this invoice.
 
+IMPORTANT SYSTEM RULES:
+- UNDER NO CIRCUMSTANCES include bank details, sort codes, account numbers,
+  IBANs, SWIFT codes, payment instructions, or any banking information.
+- REMOVE the entire bank section from the corrected invoice.
+- DO NOT create or hallucinate banking details.
+- The corrected invoice must contain NO reference to banking information at all.
+
 Context:
 - VAT category: ${vatDecision.vatLabel}
 - DRC applies: ${vatDecision.drc ? "Yes" : "No"}
@@ -63,22 +70,26 @@ Check:
    • If the invoice states “No VAT” but the supply is zero-rated, replace “No VAT” with “Zero-rated (0 %)” and include the correct statutory reference (VATA 1994 Sch 8 Group 5).
    • Confirm that the Domestic Reverse Charge does not apply to zero-rated supplies.
 
-Please return a JSON object with the following structure:
+Return JSON only in this structure:
 {
   "vat_check": "...",
   "cis_check": "...",
   "required_wording": "...",
-  "corrected_invoice": "<HTML layout of the corrected invoice, following the template below>",
+  "corrected_invoice": "<HTML layout>",
   "summary": "..."
 }
 
-Use the following HTML invoice template when constructing the corrected_invoice field:
+Use the following HTML invoice template when constructing corrected_invoice.
+***REMOVE BANK DETAILS SECTION ENTIRELY***
 
 <template>
-<div style="max-width:820px;margin:0 auto;font:14px/1.45 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial;color:#222">
+<div style="max-width:820px;margin:0 auto;
+            font:14px/1.45 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial;color:#222">
+
   <div style="border-bottom:3px solid #4e65ac;padding-bottom:8px;margin-bottom:16px">
     <div style="font-size:12px;color:#555">
-      Company Registration No: 15284926 · Registered Office: 7200 The Quorum, Oxford Business Park North, Oxford, OX4 2JZ, United Kingdom
+      Company Registration No: 15284926 · Registered Office: 7200 The Quorum, Oxford Business Park North,
+      Oxford, OX4 2JZ, United Kingdom
     </div>
     <h1 style="margin:8px 0 0;font-size:22px;letter-spacing:.5px;color:#4e65ac">TAX INVOICE</h1>
   </div>
@@ -115,16 +126,15 @@ Use the following HTML invoice template when constructing the corrected_invoice 
     </thead>
   </table>
 
-  <div style="margin-top:14px">
-    <div style="font-weight:600;color:#4e65ac;margin-bottom:4px">Bank Details</div>
-    <div>Bank: NatWest · Account: 10131728 · Sort Code: 60-17-21</div>
-  </div>
+  <!-- BANK DETAILS REMOVED BY SYSTEM REQUIREMENT -->
 
   <div style="margin-top:14px;padding:10px;border:1px dashed #cfd6e4;background:#f8fafc">
     <div style="font-weight:600;color:#4e65ac;margin-bottom:6px">Notes</div>
-    <div>- This supply is <strong>zero-rated for VAT</strong> as it relates to a new-build dwelling (VATA 1994 Sch 8 Group 5). The Domestic Reverse Charge does <strong>not</strong> apply to zero-rated supplies.</div>
+    <div>- This supply is <strong>zero-rated for VAT</strong> as it relates to a new-build dwelling (VATA 1994 Sch 8 Group 5).
+         The Domestic Reverse Charge does <strong>not</strong> apply to zero-rated supplies.</div>
     <div>- <strong>CIS</strong> deduction applied at 20% on the labour element only.</div>
   </div>
+
 </div>
 </template>
 
@@ -141,9 +151,17 @@ ${text}
   try {
     const result = JSON.parse(res.choices[0].message.content);
 
-    // 🔧 Auto-correct any "No VAT" wording to "Zero-rated (0 %)"
-    if (result.corrected_invoice && result.corrected_invoice.includes("No VAT")) {
-      result.corrected_invoice = result.corrected_invoice.replace(/No VAT/gi, "Zero-rated (0 %)");
+    // 🔒 FINAL SAFETY: Strip any bank details if the model tries to generate them
+    if (result.corrected_invoice) {
+      result.corrected_invoice = result.corrected_invoice
+        .replace(/bank.*?:.*?<br>/gi, "")
+        .replace(/bank.*?<div>/gi, "")
+        .replace(/account.*?:.*?<br>/gi, "")
+        .replace(/sort.?code.*?:.*?<br>/gi, "")
+        .replace(/iban.*?:.*?<br>/gi, "")
+        .replace(/swift.*?:.*?<br>/gi, "")
+        .replace(/payment instruction.*?<br>/gi, "")
+        .replace(/bank details/gi, "");
     }
 
     return result;
