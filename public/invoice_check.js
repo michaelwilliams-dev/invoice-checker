@@ -30,7 +30,7 @@ const dz = new Dropzone("#invoiceDrop", {
     // --- Clear Results button logic -------------------------------------
     if (clearBtn) {
       clearBtn.addEventListener("click", () => {
-        location.reload(); // 🔄 full page refresh resets Dropzone + screen safely
+        window.location.replace(window.location.pathname); // 🔄 full hard reload wipes all states
       });
     }
 
