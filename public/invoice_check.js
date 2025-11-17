@@ -62,17 +62,28 @@ const dz = new Dropzone("#invoiceDrop", {
     dzElement.appendChild(overlay);
 
     // ---- sending --------------------------------------------------------
-    dzInstance.on("sending", (file, xhr, formData) => {
-      overlay.innerHTML = `⏳ Uploading<br>${file.name}`;
-      formData.append("vatCategory", document.getElementById("vatCategory").value);
-      formData.append("endUserConfirmed", document.getElementById("endUserConfirmed").value);
-      formData.append("cisRate", document.getElementById("cisRate").value);
+dzInstance.on("sending", (file, xhr, formData) => {
+  overlay.innerHTML = `⏳ Uploading<br>${file.name}`;
+  formData.append("vatCategory", document.getElementById("vatCategory").value);
+  formData.append("endUserConfirmed", document.getElementById("endUserConfirmed").value);
+  formData.append("cisRate", document.getElementById("cisRate").value);
 
-      // ✅ include email addresses automatically (no button needed)
-      formData.append("userEmail", document.getElementById("userEmail").value);
-      formData.append("emailCopy1", document.getElementById("emailCopy1").value);
-      formData.append("emailCopy2", document.getElementById("emailCopy2").value);
-    });
+  // ✅ NEW: Supplier / Customer selector
+  const partyRole = document.getElementById("partyRole").value;
+  let roleText = "";
+  if (partyRole === "supplier") {
+    roleText = "This is a supplier of services.";
+  } else {
+    roleText = "This is a customer for services.";
+  }
+  formData.append("partyRole", partyRole);
+  formData.append("roleText", roleText);
+
+  // ✅ existing: include email addresses automatically
+  formData.append("userEmail", document.getElementById("userEmail").value);
+  formData.append("emailCopy1", document.getElementById("emailCopy1").value);
+  formData.append("emailCopy2", document.getElementById("emailCopy2").value);
+});
 
     // ---- success --------------------------------------------------------
     dzInstance.on("success", (file, response) => {
