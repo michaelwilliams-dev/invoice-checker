@@ -78,12 +78,14 @@ export async function saveReportFiles(aiReply) {
       {
         children: [
           new Paragraph({
+            alignment: "center",
             children: [
               new TextRun({ text: "AIVS Invoice Checker", bold: true, size: 28 }),
             ],
           }),
           /* AI Compliance Report – Header */
           new Paragraph({
+            alignment: "center",
             children: [
               new TextRun({ text: "AI Compliance Report", bold: true, size: 30, color: "4e65ac" }),
             ],
