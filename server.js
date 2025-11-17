@@ -82,13 +82,68 @@ export async function saveReportFiles(aiReply) {
               new TextRun({ text: "AIVS Invoice Checker", bold: true, size: 28 }),
             ],
           }),
-          new Paragraph({ text: `Generated: ${timestamp}` }),
-          new Paragraph({ text: "" }),
-          new Paragraph({ text: "AI Compliance Report", heading: "Heading1" }),
-          new Paragraph({ text: `VAT / DRC Check: ${aiReply.vat_check || "—"}` }),
-          new Paragraph({ text: `CIS Check: ${aiReply.cis_check || "—"}` }),
-          new Paragraph({ text: `Required Wording: ${aiReply.required_wording || "—"}` }),
-          new Paragraph({ text: `Summary: ${aiReply.summary || "—"}` }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "AI Compliance Report", bold: true, size: 30 }),
+            ],
+            spacing: { after: 200 },
+          }),
+          
+          /* VAT / DRC Check */
+          new Paragraph({
+            children: [
+              new TextRun({ text: "VAT / DRC Check", bold: true, size: 24 }),
+            ],
+            spacing: { before: 200, after: 80 },
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: aiReply.vat_check || "—", size: 22 }),
+            ],
+            spacing: { after: 200 },
+          }),
+          
+          /* CIS Check */
+          new Paragraph({
+            children: [
+              new TextRun({ text: "CIS Check", bold: true, size: 24 }),
+            ],
+            spacing: { before: 200, after: 80 },
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: aiReply.cis_check || "—", size: 22 }),
+            ],
+            spacing: { after: 200 },
+          }),
+          
+          /* Required Wording */
+          new Paragraph({
+            children: [
+              new TextRun({ text: "Required Wording", bold: true, size: 24 }),
+            ],
+            spacing: { before: 200, after: 80 },
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: aiReply.required_wording || "—", size: 22 }),
+            ],
+            spacing: { after: 200 },
+          }),
+          
+          /* Summary */
+          new Paragraph({
+            children: [
+              new TextRun({ text: "Summary", bold: true, size: 24 }),
+            ],
+            spacing: { before: 200, after: 80 },
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: aiReply.summary || "—", size: 22 }),
+            ],
+            spacing: { after: 300 },
+          }),
 
           ...(aiReply.corrected_invoice
             ? [
