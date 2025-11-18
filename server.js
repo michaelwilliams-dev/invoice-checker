@@ -201,7 +201,14 @@ export async function saveReportFiles(aiReply) {
   pdf.moveDown();
   pdf.fontSize(10).text(`Generated: ${timestamp}`);
   pdf.moveDown();
-  pdf.fontSize(11).text(JSON.stringify(aiReply, null, 2));
+  pdf.fontSize(11).text(
+    [
+      aiReply.vat_check,
+      aiReply.cis_check,
+      aiReply.required_wording,
+      aiReply.summary
+    ].filter(Boolean).join("\n\n")
+  );
   pdf.end();
 
   await new Promise((resolve, reject) => {
