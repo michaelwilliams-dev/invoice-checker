@@ -29,7 +29,7 @@ const LIMIT      = 10000;
 let metadata = [];
 let faissIndex = [];
 
-/* Load metadata (even if blank text — relevance still works) */
+/* Load metadata */
 try {
   console.log("🔍 Loading FAISS metadata...");
   metadata = fs
@@ -45,7 +45,7 @@ try {
   metadata = [];
 }
 
-/* Minimal vector loader (no text merging, relevance only) */
+/* Load vector.index */
 async function loadIndex(limit = LIMIT) {
   console.log(`📦 Loading vector.index (limit ${limit})`);
 
@@ -66,14 +66,9 @@ async function loadIndex(limit = LIMIT) {
 
       try {
         const obj = JSON.parse(p.endsWith("}") ? p : p + "}");
-
         const meta = metadata[processed] || {};
 
-        vectors.push({
-          ...obj,
-          meta  
-        });
-
+        vectors.push({ ...obj, meta });
         processed++;
 
         if (vectors.length >= limit) {
@@ -81,7 +76,6 @@ async function loadIndex(limit = LIMIT) {
           await fd.close();
           return vectors;
         }
-
       } catch {}
     }
   }
@@ -154,7 +148,7 @@ router.post("/check_invoice", async (req, res) => {
     const parsed = await parseInvoice(file.data);
 
     /* -------------------------------------------------------------
-       DRC AUTO-CORRECTION (SAFE + MINIMAL + STABLE)
+       DRC AUTO-CORRECTION + LINE EXTRACTION (OPTION B)
     ------------------------------------------------------------- */
 
     function detectDRC(text) {
@@ -174,12 +168,25 @@ router.post("/check_invoice", async (req, res) => {
       );
     }
 
-    function correctDRC(text) {
-      let net = 0;
+    // Extract the line item (simple + robust)
+    function extractLineItem(text) {
+      const regex = /(.*?)(\d+)\s*£\s*([0-9,]+)/i;
+      const m = text.match(regex);
 
-      // Simple & safe: take first currency value
-      const m = text.match(/£\s*([0-9,]+)/);
-      if (m) net = parseFloat(m[1].replace(/,/g, ""));
+      if (!m) return { description: "Invoice item", qty: 1, unit: 0 };
+
+      return {
+        description: m[1].trim(),
+        qty: parseInt(m[2]),
+        unit: parseFloat(m[3].replace(/,/g, ""))
+      };
+    }
+
+    function correctDRC(text) {
+      const item = extractLineItem(text);
+
+      // Get subtotal from the line item
+      const net = +(item.qty * item.unit).toFixed(2);
 
       const cis = +(net * 0.20).toFixed(2);
       const totalDue = +(net - cis).toFixed(2);
@@ -188,27 +195,62 @@ router.post("/check_invoice", async (req, res) => {
         vat_check: "VAT removed – Domestic Reverse Charge applies.",
         cis_check: `CIS deduction at 20% applied: £${cis}`,
         required_wording:
-          "Reverse Charge: Customer to account for VAT to HMRC. VAT Act 1994 Section 55A.",
+          "Reverse Charge: Customer must account for VAT to HMRC (VAT Act 1994 Section 55A).",
         summary: `Corrected: Net £${net}, CIS £${cis}, Total Due £${totalDue}`,
+        
         corrected_invoice: `
-          <p><strong>Corrected Invoice:</strong></p>
-          <p>Net: £${net}</p>
-          <p>VAT: Reverse Charge (Customer to account for VAT)</p>
-          <p>CIS (20%): £${cis}</p>
-          <p><strong>Total Due: £${totalDue}</strong></p>
+          <div style="font-family:Arial, sans-serif; font-size:14px;">
+
+            <h3 style="color:#4e65ac; margin-bottom:10px;">Corrected Invoice</h3>
+
+            <table style="width:100%; border-collapse:collapse; margin-bottom:12px;">
+              <tr>
+                <th style="border:1px solid #ccc; background:#eef3ff; padding:8px; text-align:left;">Description</th>
+                <th style="border:1px solid #ccc; background:#eef3ff; padding:8px; text-align:right;">Qty</th>
+                <th style="border:1px solid #ccc; background:#eef3ff; padding:8px; text-align:right;">Unit (£)</th>
+                <th style="border:1px solid #ccc; background:#eef3ff; padding:8px; text-align:right;">Line Total (£)</th>
+              </tr>
+
+              <tr>
+                <td style="border:1px solid #ccc; padding:8px;">${item.description}</td>
+                <td style="border:1px solid #ccc; padding:8px; text-align:right;">${item.qty}</td>
+                <td style="border:1px solid #ccc; padding:8px; text-align:right;">${item.unit.toFixed(2)}</td>
+                <td style="border:1px solid #ccc; padding:8px; text-align:right;">${net.toFixed(2)}</td>
+              </tr>
+
+              <tr>
+                <td colspan="3" style="border:1px solid #ccc; padding:8px; text-align:right; font-weight:bold;">VAT (Reverse Charge)</td>
+                <td style="border:1px solid #ccc; padding:8px; text-align:right;">£0.00</td>
+              </tr>
+
+              <tr>
+                <td colspan="3" style="border:1px solid #ccc; padding:8px; text-align:right;">CIS (20%)</td>
+                <td style="border:1px solid #ccc; padding:8px; text-align:right;">-£${cis.toFixed(2)}</td>
+              </tr>
+
+              <tr>
+                <td colspan="3" style="border:1px solid #ccc; padding:8px; font-weight:bold; background:#dfe7ff; text-align:right;">Total Due</td>
+                <td style="border:1px solid #ccc; padding:8px; font-weight:bold; background:#dfe7ff; text-align:right;">£${totalDue.toFixed(2)}</td>
+              </tr>
+            </table>
+
+            <p style="margin-top:10px; font-size:12px; color:#444;">
+              VAT Reverse Charge applies — customer must account for VAT to HMRC.
+            </p>
+
+          </div>
         `
       };
     }
 
+    /* Check whether to apply DRC override */
     let drcResult = null;
     if (parsed.text && detectDRC(parsed.text)) {
-      console.log("⚠️ DRC detected – auto-correction applied");
+      console.log("⚠️ DRC override applied");
       drcResult = correctDRC(parsed.text);
     }
 
-    /* -------------------------------------------------------------
-       FAISS relevance only
-    ------------------------------------------------------------- */
+    /* FAISS relevance only */
     let faissContext = "";
     try {
       const matches = await searchIndex(parsed.text, faissIndex);
@@ -217,10 +259,7 @@ router.post("/check_invoice", async (req, res) => {
       console.log("⚠️ FAISS relevance error:", err.message);
     }
 
-    /* -------------------------------------------------------------
-       AI analysis (or DRC override)
-    ------------------------------------------------------------- */
-
+    /* AI or override */
     let aiReply;
 
     if (drcResult) {
@@ -229,10 +268,7 @@ router.post("/check_invoice", async (req, res) => {
       aiReply = await analyseInvoice(parsed.text, flags, faissContext);
     }
 
-    /* -------------------------------------------------------------
-       Report generation
-    ------------------------------------------------------------- */
-
+    /* Generate report */
     const { docPath, pdfPath, timestamp } = await saveReportFiles(aiReply);
 
     /* Optional email */
