@@ -147,8 +147,9 @@ router.post("/check_invoice", async (req, res) => {
 
     const parsed = await parseInvoice(file.data);
     console.log("📄 PARSED TEXT:", parsed.text);
+
     /* -------------------------------------------------------------
-       DRC AUTO-CORRECTION + LINE EXTRACTION (OPTION B)
+       DRC AUTO-CORRECTION + LINE EXTRACTION (ONLY FUNCTIONS CHANGED)
     ------------------------------------------------------------- */
 
     function detectDRC(text) {
@@ -168,25 +169,37 @@ router.post("/check_invoice", async (req, res) => {
       );
     }
 
-    // Extract the line item (simple + robust)
+    /* ---------- UPDATED extractLineItem() ---------- */
     function extractLineItem(text) {
-      const regex = /(.*?)(\d+)\s*£\s*([0-9,]+)/i;
-      const m = text.match(regex);
+      const t = text.replace(/\s+/g, " ").trim();
 
-      if (!m) return { description: "Invoice item", qty: 1, unit: 0 };
+      // quantity pattern: "4 days", "4 day"
+      const qtyMatch = t.match(/(\d+)\s*(day|days|hr|hrs|hour|hours)/i);
+      const qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
 
-      return {
-        description: m[1].trim(),
-        qty: parseInt(m[2]),
-        unit: parseFloat(m[3].replace(/,/g, ""))
-      };
+      const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+      let description = "Invoice item";
+
+      lines.forEach((line, i) => {
+        if (qtyMatch && line.includes(qtyMatch[1])) {
+          if (lines[i+1]) description = lines[i+1].trim();
+        }
+      });
+
+      return { description, qty };
     }
 
+    /* ---------- UPDATED correctDRC() ---------- */
     function correctDRC(text) {
+
       const item = extractLineItem(text);
 
-      // Get subtotal from the line item
-      const net = +(item.qty * item.unit).toFixed(2);
+      // Extract subtotal from TOTAL NET £1,200
+      let net = 0;
+      const netMatch = text.match(/TOTAL NET\s*£\s*([\d,]+)/i);
+      if (netMatch) net = parseFloat(netMatch[1].replace(/,/g, ""));
+
+      const unit = item.qty > 0 ? net / item.qty : net;
 
       const cis = +(net * 0.20).toFixed(2);
       const totalDue = +(net - cis).toFixed(2);
@@ -197,7 +210,7 @@ router.post("/check_invoice", async (req, res) => {
         required_wording:
           "Reverse Charge: Customer must account for VAT to HMRC (VAT Act 1994 Section 55A).",
         summary: `Corrected: Net £${net}, CIS £${cis}, Total Due £${totalDue}`,
-        
+
         corrected_invoice: `
           <div style="font-family:Arial, sans-serif; font-size:14px;">
 
@@ -214,7 +227,7 @@ router.post("/check_invoice", async (req, res) => {
               <tr>
                 <td style="border:1px solid #ccc; padding:8px;">${item.description}</td>
                 <td style="border:1px solid #ccc; padding:8px; text-align:right;">${item.qty}</td>
-                <td style="border:1px solid #ccc; padding:8px; text-align:right;">${item.unit.toFixed(2)}</td>
+                <td style="border:1px solid #ccc; padding:8px; text-align:right;">${unit.toFixed(2)}</td>
                 <td style="border:1px solid #ccc; padding:8px; text-align:right;">${net.toFixed(2)}</td>
               </tr>
 
@@ -233,10 +246,6 @@ router.post("/check_invoice", async (req, res) => {
                 <td style="border:1px solid #ccc; padding:8px; font-weight:bold; background:#dfe7ff; text-align:right;">£${totalDue.toFixed(2)}</td>
               </tr>
             </table>
-
-            <p style="margin-top:10px; font-size:12px; color:#444;">
-              VAT Reverse Charge applies — customer must account for VAT to HMRC.
-            </p>
 
           </div>
         `
@@ -290,28 +299,3 @@ router.post("/check_invoice", async (req, res) => {
   } catch (err) {
     console.error("❌ /check_invoice error:", err.message);
     res.status(500).json({ error: err.message });
-  }
-});
-
-/* -------------------------------------------------------------
-   /faiss-test — unchanged
-------------------------------------------------------------- */
-
-router.get("/faiss-test", async (req, res) => {
-  try {
-    const matches = await searchIndex("CIS VAT rules", faissIndex);
-    const top = matches[0] || {};
-
-    res.json({
-      ok: true,
-      matchCount: matches.length,
-      topScore: top.score || 0,
-      preview: top.meta ? top.meta.title : "NONE"
-    });
-
-  } catch (err) {
-    res.json({ ok: false, error: err.message });
-  }
-});
-
-export default router;
