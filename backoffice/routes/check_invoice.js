@@ -146,7 +146,7 @@ router.post("/check_invoice", async (req, res) => {
     };
 
     const parsed = await parseInvoice(file.data);
-
+    console.log("📄 PARSED TEXT:", parsed.text);
     /* -------------------------------------------------------------
        DRC AUTO-CORRECTION + LINE EXTRACTION (OPTION B)
     ------------------------------------------------------------- */
