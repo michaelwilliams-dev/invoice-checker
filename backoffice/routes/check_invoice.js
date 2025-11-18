@@ -67,7 +67,6 @@ async function loadIndex(limit = LIMIT) {
       try {
         const obj = JSON.parse(p.endsWith("}") ? p : p + "}");
 
-        // Attach metadata row (titles, groups, etc — NO text needed)
         const meta = metadata[processed] || {};
 
         vectors.push({
@@ -128,7 +127,7 @@ async function searchIndex(query, index) {
 }
 
 /* -------------------------------------------------------------
-   MAIN ROUTE — RESTORED SIMPLE VERSION
+   MAIN ROUTE
 ------------------------------------------------------------- */
 
 router.use(
@@ -144,10 +143,8 @@ router.post("/check_invoice", async (req, res) => {
     console.log("🟢 /check_invoice");
 
     if (!req.files?.file) throw new Error("No file uploaded");
-
     const file = req.files.file;
 
-    // Restore original flag set — NO CIS engine
     const flags = {
       vatCategory: req.body.vatCategory,
       endUserConfirmed: req.body.endUserConfirmed,
@@ -155,30 +152,36 @@ router.post("/check_invoice", async (req, res) => {
     };
 
     const parsed = await parseInvoice(file.data);
+
     /* -------------------------------------------------------------
-      DRC / VAT / CIS AUTO-CORRECTION ENGINE (NEW)
+       DRC AUTO-CORRECTION (SAFE + MINIMAL + STABLE)
     ------------------------------------------------------------- */
 
-    function detectDRC(parsed) {
-      // Basic detection — you can refine later if needed
+    function detectDRC(text) {
+      if (!text) return false;
+      const t = text.toLowerCase();
+
       return (
-        parsed.text.includes("labour") ||
-        parsed.text.includes("carpentry") ||
-        parsed.text.includes("construction") ||
-        parsed.text.includes("building")
+        (t.includes("labour") ||
+         t.includes("carpentry") ||
+         t.includes("construction") ||
+         t.includes("builder") ||
+         t.includes("joinery"))
+        &&
+        t.includes("vat")
+        &&
+        t.includes("20")
       );
     }
 
-    function correctDRC(parsed) {
-      // Extract net from parsed invoice
+    function correctDRC(text) {
       let net = 0;
-      const netMatch = parsed.text.match(/(?:TOTAL NET|NET)\s*£?(\d+(?:\.\d+)?)/i);
-      if (netMatch) net = parseFloat(netMatch[1]);
 
-      // CIS = 20% of net
+      // Simple & safe: take first currency value
+      const m = text.match(/£\s*([0-9,]+)/);
+      if (m) net = parseFloat(m[1].replace(/,/g, ""));
+
       const cis = +(net * 0.20).toFixed(2);
-
-      // Total due = net - cis
       const totalDue = +(net - cis).toFixed(2);
 
       return {
@@ -197,13 +200,15 @@ router.post("/check_invoice", async (req, res) => {
       };
     }
 
-    let drcReply = null;
-
-    if (detectDRC(parsed)) {
-      console.log("⚠️ DRC detected – applying correction");
-      drcReply = correctDRC(parsed);
+    let drcResult = null;
+    if (parsed.text && detectDRC(parsed.text)) {
+      console.log("⚠️ DRC detected – auto-correction applied");
+      drcResult = correctDRC(parsed.text);
     }
-    /* FAISS relevance only */
+
+    /* -------------------------------------------------------------
+       FAISS relevance only
+    ------------------------------------------------------------- */
     let faissContext = "";
     try {
       const matches = await searchIndex(parsed.text, faissIndex);
@@ -212,21 +217,25 @@ router.post("/check_invoice", async (req, res) => {
       console.log("⚠️ FAISS relevance error:", err.message);
     }
 
-    /* AI analysis (unchanged — uses your original invoice_tools.js) */
-    
+    /* -------------------------------------------------------------
+       AI analysis (or DRC override)
+    ------------------------------------------------------------- */
+
     let aiReply;
 
-    if (drcReply) {
-      // DRC logic overrides the AI
-      aiReply = drcReply;
+    if (drcResult) {
+      aiReply = drcResult;
     } else {
-      // Default: use original AI behaviour
       aiReply = await analyseInvoice(parsed.text, flags, faissContext);
     }
-    /* Generate report files */
+
+    /* -------------------------------------------------------------
+       Report generation
+    ------------------------------------------------------------- */
+
     const { docPath, pdfPath, timestamp } = await saveReportFiles(aiReply);
 
-    /* Optionally send email */
+    /* Optional email */
     await sendReportEmail(
       req.body.userEmail,
       [req.body.emailCopy1, req.body.emailCopy2].filter(Boolean),
@@ -251,6 +260,7 @@ router.post("/check_invoice", async (req, res) => {
 /* -------------------------------------------------------------
    /faiss-test — unchanged
 ------------------------------------------------------------- */
+
 router.get("/faiss-test", async (req, res) => {
   try {
     const matches = await searchIndex("CIS VAT rules", faissIndex);
