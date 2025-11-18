@@ -159,20 +159,45 @@ router.post("/check_invoice", async (req, res) => {
       DRC / VAT / CIS AUTO-CORRECTION ENGINE (NEW)
     ------------------------------------------------------------- */
 
-    function detectDRC(parsed) {
-      // Basic detection — you can refine later if needed
-      return (
-        parsed.text.includes("labour") ||
-        parsed.text.includes("carpentry") ||
-        parsed.text.includes("construction") ||
-        parsed.text.includes("building")
+    function detectDRC(parsed, flags) {
+      const text = (parsed.text || "").toLowerCase();
+    
+      // construction indicators
+      const constructionKeywords = [
+        "carpentry",
+        "carpenter",
+        "deck",
+        "roof",
+        "roofing",
+        "brickwork",
+        "bricklayer",
+        "plastering",
+        "drylining",
+        "joinery",
+        "building",
+        "construction",
+        "site labour",
+        "labour"
+      ];
+      const hasConstructionWord = constructionKeywords.some((kw) =>
+        text.includes(kw)
       );
+    
+      // VAT @ 20% being wrongly shown
+      const shows20pcVat = /vat\s*\(?\s*20%|\b20%\s*vat\b/.test(text);
+    
+      // CIS present in text or user input
+      const cisFlag = !!(flags.cisRate && flags.cisRate !== "0");
+      const mentionsCIS = text.includes("cis") || cisFlag;
+    
+      // DRC applies when all three conditions are true
+      return hasConstructionWord && shows20pcVat && mentionsCIS;
     }
 
     function correctDRC(parsed) {
       // Extract net from parsed invoice
       let net = 0;
-      const netMatch = parsed.text.match(/(?:TOTAL NET|NET)\s*£?(\d+(?:\.\d+)?)/i);
+      const netMatch = parsed.text.match(/(?:TOTAL NET|NET|SUBTOTAL)\s*£?(\d+(?:\.\d+)?)/i);
       if (netMatch) net = parseFloat(netMatch[1]);
 
       // CIS = 20% of net
@@ -199,7 +224,7 @@ router.post("/check_invoice", async (req, res) => {
 
     let drcReply = null;
 
-    if (detectDRC(parsed)) {
+    if (detectDRC(parsed, flags) || flags.cisRate === "20") {
       console.log("⚠️ DRC detected – applying correction");
       drcReply = correctDRC(parsed);
     }
