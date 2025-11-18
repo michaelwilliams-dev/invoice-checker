@@ -196,10 +196,22 @@ router.post("/check_invoice", async (req, res) => {
 
     function correctDRC(parsed) {
       // Extract net from parsed invoice
+        
       let net = 0;
-      const netMatch = parsed.text.match(/(?:TOTAL NET|NET|SUBTOTAL)\s*£?(\d+(?:\.\d+)?)/i);
-      if (netMatch) net = parseFloat(netMatch[1]);
 
+      // Try main patterns: "Subtotal £1,200.00" or "Subtotal\n£1,200.00"
+      const netMatch =
+        parsed.text.match(/subtotal[^£]*£\s*([\d,]+\.\d{2})/i) ||
+        parsed.text.match(/total net[^£]*£\s*([\d,]+\.\d{2})/i) ||
+        parsed.text.match(/net[^£]*£\s*([\d,]+\.\d{2})/i);
+
+      // Fallback: any standalone currency amount
+      if (!netMatch) {
+        const fallback = parsed.text.match(/£\s*([\d,]+\.\d{2})/);
+        if (fallback) net = parseFloat(fallback[1].replace(/,/g, ""));
+      } else {
+        net = parseFloat(netMatch[1].replace(/,/g, ""));
+      }
       // CIS = 20% of net
       const cis = +(net * 0.20).toFixed(2);
 
