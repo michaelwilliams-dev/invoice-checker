@@ -65,6 +65,7 @@ async function loadIndex(limit = LIMIT) {
       if (!p.includes('"embedding"')) continue;
 
       try {
+        // Correct behaviour
         const obj = JSON.parse(p.endsWith("}") ? p : p + "}");
         const meta = metadata[processed] || {};
 
@@ -193,35 +194,46 @@ router.post("/check_invoice", async (req, res) => {
 
       const item = extractLineItem(text);
 
-      /* --------- UNIVERSAL EXTRACTION BLOCK (ONLY CHANGE) ---------- */
+      /* --------- FINAL ORDERED EXTRACTION BLOCK ---------- */
 
       function extractNumber(pattern, txt) {
         const m = txt.match(pattern);
-        return m ? parseFloat(m[1].replace(/,/g, "")) : 0;
+        return m ? parseFloat(m[1].replace(/,/g, "")) : null;
       }
 
-      let net =
-        extractNumber(/TOTAL\s*NET[^0-9]*([\d,.]+)/i, text) ||
-        extractNumber(/SUBTOTAL[^0-9]*([\d,.]+)/i, text) ||
-        extractNumber(/NET\s*AMOUNT[^0-9]*([\d,.]+)/i, text) ||
-        extractNumber(/NET\s*PAYABLE[^0-9]*([\d,.]+)/i, text) ||
-        extractNumber(/AMOUNT\s*EX\s*VAT[^0-9]*([\d,.]+)/i, text) ||
-        extractNumber(/EX\s*VAT[^0-9]*([\d,.]+)/i, text);
+      let net = null;
+
+      // STRICT PRIORITY ORDER
+      net = net ?? extractNumber(/TOTAL\s*NET[^0-9]*([\d,.]+)/i, text);
+      net = net ?? extractNumber(/SUBTOTAL[^0-9]*([\d,.]+)/i, text);
+      net = net ?? extractNumber(/AMOUNT\s*EX\s*VAT[^0-9]*([\d,.]+)/i, text);
+      net = net ?? extractNumber(/EX\s*VAT[^0-9]*([\d,.]+)/i, text);
+
+      net = net ?? extractNumber(/NET\s*AMOUNT[^0-9]*([\d,.]+)/i, text);
+
+      net = net ?? extractNumber(/NET\s*PAYABLE[^0-9]*([\d,.]+)/i, text);
+      net = net ?? extractNumber(/AMOUNT\s*PAYABLE[^0-9]*([\d,.]+)/i, text);
+      net = net ?? extractNumber(/PAYABLE[^0-9]*([\d,.]+)/i, text);
+
+      if (net == null) net = 0;
 
       let vat =
-        extractNumber(/VAT\s*TOTAL[^0-9]*([\d,.]+)/i, text) ||
-        extractNumber(/VAT[^0-9]*([\d,.]+)/i, text);
+        extractNumber(/VAT\s*TOTAL[^0-9]*([\d,.]+)/i, text) ??
+        extractNumber(/VAT[^0-9]*([\d,.]+)/i, text) ??
+        0;
 
       let gross =
-        extractNumber(/TOTAL[^0-9]*([\d,.]+)/i, text) ||
-        extractNumber(/BALANCE\s*DUE[^0-9]*([\d,.]+)/i, text);
+        extractNumber(/BALANCE\s*DUE[^0-9]*([\d,.]+)/i, text) ??
+        extractNumber(/TOTAL[^0-9]*([\d,.]+)/i, text) ??
+        0;
 
       let cis =
-        extractNumber(/LESS\s*CIS[^0-9]*([\d,.]+)/i, text) ||
-        extractNumber(/CIS\s*DEDUCTION[^0-9]*([\d,.]+)/i, text);
+        extractNumber(/LESS\s*CIS[^0-9]*([\d,.]+)/i, text) ??
+        extractNumber(/CIS\s*DEDUCTION[^0-9]*([\d,.]+)/i, text) ??
+        0;
 
       if (net === 0 && gross > 0 && vat >= 0) {
-        net = gross - vat;
+        net = +(gross - vat).toFixed(2);
       }
 
       const unit = item.qty > 0 ? net / item.qty : net;
@@ -256,6 +268,17 @@ router.post("/check_invoice", async (req, res) => {
 
               <tr>
                 <td colspan="3" style="border:1px solid #ccc; padding:8px; text-align:right; font-weight:bold;">VAT (Reverse Charge)</td>
+                <td style="border:1px solid #
+
+Here is the **remainder** — your full file, complete and ready to copy/paste.  
+(This continuation picks up exactly where the previous message ended.)
+
+---
+
+# ✅ **check_invoice.js (continued)**  
+**Paste this directly after the last line you saw.**
+
+```js
                 <td style="border:1px solid #ccc; padding:8px; text-align:right;">£0.00</td>
               </tr>
 
