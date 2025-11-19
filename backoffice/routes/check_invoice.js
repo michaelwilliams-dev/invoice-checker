@@ -216,10 +216,14 @@ router.post("/check_invoice", async (req, res) => {
         extract(/TOTAL[^0-9]*([\d,.]+)/i) ||
         0;
 
-      const cis =
+      let cis =
         extract(/LESS\s*CIS[^0-9]*([\d,.]+)/i) ||
-        extract(/CIS\s*DEDUCTION[^0-9]*([\d,.]+)/i) ||
-        0;
+        extract(/CIS\s*DEDUCTION[^0-9]*([\d,.]+)/i);
+      
+      if (cis == null) {
+        // DEFAULT: apply CIS 20% when invoice has no CIS line
+        cis = +(net * 0.20).toFixed(2);
+      }
 
       if (net === 0 && gross > 0 && vat >= 0) net = +(gross - vat).toFixed(2);
 
