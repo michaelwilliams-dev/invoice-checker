@@ -1,7 +1,7 @@
 /**
  * Docling Invoice Extractor
- * Reads a PDF invoice and outputs structured JSON
- * Ready to feed into your invoice checker
+ * Free, local, no billing.
+ * Converts ANY PDF invoice into clean JSON for the Invoice Checker.
  */
 
 import { readFile } from "fs/promises";
@@ -9,24 +9,21 @@ import { PdfReader } from "@docling/document-model/pdf";
 import { DocumentAnalyzer } from "@docling/analysis";
 import { JsonExporter } from "@docling/export-json";
 
-/* ------------ MAIN EXTRACTION FUNCTION ---------------- */
-
-export async function extractInvoiceData(pdfPath) {
+export async function extractInvoice(pdfPath) {
   try {
-    // 1. Load PDF into Docling reader
-    const pdfBytes = await readFile(pdfPath);
-    const pdfReader = new PdfReader(pdfBytes);
+    const pdfBuffer = await readFile(pdfPath);
 
-    // 2. Extract high-level document model
-    const documentModel = await pdfReader.extract();
+    // 1. Load PDF
+    const reader = new PdfReader(pdfBuffer);
+    const model = await reader.extract();
 
-    // 3. Analyze the document (tables, sections, headers)
+    // 2. Analyse layout (tables, blocks, reading order)
     const analyzer = new DocumentAnalyzer();
-    const analyzed = analyzer.analyze(documentModel);
+    const analysed = analyzer.analyze(model);
 
-    // 4. Export everything as JSON
+    // 3. Export to JSON object
     const exporter = new JsonExporter();
-    const json = exporter.export(analyzed);
+    const json = exporter.export(analysed);
 
     return json;
 
@@ -34,13 +31,4 @@ export async function extractInvoiceData(pdfPath) {
     console.error("❌ Docling extraction failed:", err);
     return null;
   }
-}
-
-/* ------------ TEST RUNNER (OPTIONAL) ---------------- */
-
-if (process.argv[2]) {
-  const pdfPath = process.argv[2];
-  extractInvoiceData(pdfPath).then((data) => {
-    console.log(JSON.stringify(data, null, 2));
-  });
 }
