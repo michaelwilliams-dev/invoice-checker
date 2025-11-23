@@ -6,9 +6,11 @@ services:
     buildCommand: npm install
     startCommand: node server.js
     envVars:
-      - key: OPENAI_API_KEY
+      - key: NODE_VERSION
+        value: 20.10.0
+      - key: MJ_APIKEY_PUBLIC
+        sync: false
+      - key: MJ_APIKEY_PRIVATE
         sync: false
       - key: INTERNAL_API_KEY
         sync: false
-      - key: NODE_VERSION
-        value: 20.10.0
