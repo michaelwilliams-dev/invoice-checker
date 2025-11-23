@@ -1,296 +1,73 @@
+// ISO Timestamp: 2025-11-23T17:05:00Z
 /**
- * AIVS Invoice Compliance Checker · Stand-Alone Service
- * ISO Timestamp: 2025-11-12T00:10:00Z
- * Author: AIVS Software Limited
- * Brand Colour: #4e65ac
+ * AIVS Invoice Checker Backend (Docling + JSON Checker)
  */
 
 import express from "express";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
-import checkInvoiceRoute from "./backoffice/routes/check_invoice.js";
-import sendEmailRoute from "./backoffice/routes/send_email.js";
+import { extractInvoice } from "./docling_extract.js";
+import { checkInvoice } from "./invoice_checker.js";
+import fs from "fs";
 
-console.log("🔧 Booting AIVS Invoice Checker server …");
+console.log("🔧 Booting Invoice Checker …");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-
-app.use(
-  cors({
-    origin: [
-      "https://invoice-checker-0miv.onrender.com",
-      "http://invoice-checker-0miv.onrender.com",
-      "https://assistants.aivs.uk",
-      "https://property-assistant-plus.onrender.com",
-    ],
-  })
-);
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(express.static(path.join(__dirname, "public")));
-app.use("/", checkInvoiceRoute);
-app.use("/", sendEmailRoute);
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`✅ AIVS Invoice Checker running on port ${PORT}`);
-});
 
-import fs from "fs";
-function safeForAI(input) {
-  const hasBinary = Buffer.isBuffer(input);
-  const isLarge = typeof input === "string" && input.length > 20000;
-  const looksLikeFile = /%PDF|PK\x03\x04|<xml/i.test(input);
-  if (hasBinary || isLarge || looksLikeFile) {
-    console.warn("🚫 BLOCKED: attempt to send raw file data to OpenAI prevented");
-    return false;
-  }
-  return true;
-}
-
-async function askOpenAI(prompt) {
-  if (!safeForAI(prompt)) {
-    throw new Error("Unsafe input blocked — raw invoice data must not leave server");
-  }
-  console.log("✅ OK: sending clean text to OpenAI");
-}
-
-// ----------------------------------------------------
-// AIVS Report File Generator (Word + PDF with timestamp)
-// ----------------------------------------------------
-import { Document, Packer, Paragraph, TextRun } from "docx";
-import PDFDocument from "pdfkit";
-
-const __reportDir = path.join(__dirname, "generated");
-if (!fs.existsSync(__reportDir)) fs.mkdirSync(__reportDir, { recursive: true });
-
-export async function saveReportFiles(aiReply) {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const baseName = `invoice_report_${timestamp}`;
-
-  const doc = new Document({
-    sections: [
-      {
-        children: [
-          new Paragraph({
-            alignment: "center",
-            children: [
-              new TextRun({ text: "AIVS Invoice Checker", bold: true, size: 28 }),
-            ],
-          }),
-          /* AI Compliance Report – Header */
-          new Paragraph({
-            alignment: "center",
-            children: [
-              new TextRun({ text: "AI Compliance Report", bold: true, size: 30, color: "4e65ac" }),
-            ],
-            spacing: { after: 200 },
-          }),
-
-          /* VAT / DRC Check */
-          new Paragraph({
-            children: [
-              new TextRun({ text: "VAT / DRC Check", bold: true, size: 24, color: "4e65ac" }),
-            ],
-            spacing: { before: 200, after: 80 },
-          }),
-          new Paragraph({
-            children: [
-              new TextRun({ text: aiReply.vat_check || "—", size: 22 }),   // BLACK
-            ],
-            spacing: { after: 200 },
-          }),
-
-          /* CIS Check */
-          new Paragraph({
-            children: [
-              new TextRun({ text: "CIS Check", bold: true, size: 24, color: "4e65ac" }),
-            ],
-            spacing: { before: 200, after: 80 },
-          }),
-          new Paragraph({
-            children: [
-              new TextRun({ text: aiReply.cis_check || "—", size: 22 }),   // BLACK
-            ],
-            spacing: { after: 200 },
-          }),
-
-          /* Required Wording */
-          new Paragraph({
-            children: [
-              new TextRun({ text: "Required Wording", bold: true, size: 24, color: "4e65ac" }),
-            ],
-            spacing: { before: 200, after: 80 },
-          }),
-          new Paragraph({
-            children: [
-              new TextRun({ text: aiReply.required_wording || "—", size: 22 }),  // BLACK
-            ],
-            spacing: { after: 200 },
-          }),
-
-          /* Summary */
-          new Paragraph({
-            children: [
-              new TextRun({ text: "Summary", bold: true, size: 24, color: "4e65ac" }),
-            ],
-            spacing: { before: 200, after: 80 },
-          }),
-          new Paragraph({
-            children: [
-              new TextRun({ text: aiReply.summary || "—", size: 22 }),  // BLACK
-            ],
-            spacing: { after: 300 },
-          }),
-        /* AI Compliance Report – End */
-          ...(aiReply.corrected_invoice
-            ? [
-                // ✅ Invoice note instead of formatted invoice section
-                new Paragraph({
-                  children: [
-                    new TextRun({
-                      text:
-                        "Illustrated invoice layout not included in this Word report version.",
-                      bold: true,
-                      color: "4e65ac",
-                      size: 24,
-                    }),
-                    new TextRun({
-                      text:
-                        "\n\nThe invoice shown in the online report is an illustrative example only and is excluded from the Word document for clarity. " +
-                        "All compliance checks and data validations remain fully represented in this summary report.",
-                      size: 22,
-                    }),
-                  ],
-                  spacing: { before: 240, after: 240 },
-                }),
-              ]
-            : []),
-
-          // ✅ Added proper AIVS saving clause
-          new Paragraph({
-            children: [
-              new TextRun({
-                text:
-                  "© AIVS Software Limited 2025 – Confidential Internal Advisory Copy.\n\nThis document is generated by the AIVS Invoice Compliance Checker for internal advisory use only and should not be used as a substitute for professional or HMRC-verified accounting advice.",
-                italics: true,
-                size: 20,
-              }),
-            ],
-            spacing: { before: 400 },
-          }),
-        ],
-      },
-    ],
-  });
-
-  const docPath = path.join(__reportDir, `${baseName}.docx`);
-  const buffer = await Packer.toBuffer(doc);
-  fs.writeFileSync(docPath, buffer);
-
-  const pdfPath = path.join(__reportDir, `${baseName}_raw.pdf`);
-  const pdf = new PDFDocument();
-  const stream = fs.createWriteStream(pdfPath);
-  pdf.pipe(stream);
-  pdf.fontSize(14).text("AIVS RAW AI OUTPUT – UNEDITED ARCHIVE COPY", { align: "center" });
-  pdf.moveDown();
-  pdf.fontSize(10).text(`Generated: ${timestamp}`);
-  pdf.moveDown();
-  pdf.fontSize(11).text(
-    [
-      aiReply.vat_check,
-      aiReply.cis_check,
-      aiReply.required_wording,
-      aiReply.summary
-    ].filter(Boolean).join("\n\n")
-  );
-  pdf.end();
-
-  await new Promise((resolve, reject) => {
-    stream.on("finish", resolve);
-    stream.on("error", reject);
-  });
-
-  console.log("✅ Report files saved:", docPath, pdfPath);
-  return { docPath, pdfPath, timestamp };
-}
-
-// ----------------------------------------------------
-// Mailjet Email Sender – send Word + PDF attachments
-// ----------------------------------------------------
-import Mailjet from "node-mailjet";
-
-const mailjet = Mailjet.apiConnect(
-  process.env.MJ_APIKEY_PUBLIC,
-  process.env.MJ_APIKEY_PRIVATE
-);
-
-export async function sendReportEmail(to, ccList, aiReply, docPath, pdfPath, timestamp) {
+// -----------------------------
+// EXTRACT INVOICE (Docling)
+// -----------------------------
+app.post("/extractInvoice", async (req, res) => {
   try {
-    const recipients = [to, ...(ccList || [])]
-      .map((e) => (e || "").trim())
-      .filter((e) => e.length > 0);
+    const { filePath } = req.body;
 
-    if (recipients.length === 0) {
-      console.log("📭 No valid recipient addresses; skipping Mailjet send.");
-      return;
+    if (!filePath || !fs.existsSync(filePath)) {
+      return res.status(400).json({ error: "Missing/invalid filePath" });
     }
 
-    const mainTo = recipients.shift();
-    const ccArray = recipients.map((e) => ({ Email: e }));
+    const json = await extractInvoice(filePath);
+    if (!json) return res.status(500).json({ error: "Docling failed" });
 
-    const attachments = [
-      {
-        ContentType:
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        Filename: `AIVS_Compliance_Report_${timestamp}.docx`,
-        Base64Content: fs.readFileSync(docPath).toString("base64"),
-      },
-      {
-        ContentType: "application/pdf",
-        Filename: `AIVS_Raw_Output_${timestamp}.pdf`,
-        Base64Content: fs.readFileSync(pdfPath).toString("base64"),
-      },
-    ];
+    res.json({ success: true, data: json });
 
-    const result = await mailjet.post("send", { version: "v3.1" }).request({
-      Messages: [
-        {
-          From: { Email: "noreply@securemaildrop.uk", Name: "Secure Maildrop" },
-          To: [{ Email: mainTo }],
-          Cc: ccArray,
-          Subject: `AIVS Invoice Compliance Report · ${timestamp}`,
-          HTMLPart: `
-            <h3>Invoice Compliance Report – ${timestamp}</h3>
-
-            <h4 style="color:#4e65ac;">VAT / DRC Check</h4>
-            <p>${aiReply?.vat_check || "—"}</p>
-
-            <h4 style="color:#4e65ac;">CIS Check</h4>
-            <p>${aiReply?.cis_check || "—"}</p>
-
-            <h4 style="color:#4e65ac;">Required Wording</h4>
-            <p>${aiReply?.required_wording || "—"}</p>
-
-            <h4 style="color:#4e65ac;">Summary</h4>
-            <p>${aiReply?.summary || "—"}</p>
-
-            <hr />
-            <p>Your report is attached in Word (.docx) and PDF formats.</p>
-            <p>© AIVS Software Limited 2025 – Confidential Internal Advisory Copy.</p>
-          `,
-          Attachments: attachments,
-        },
-      ],
-    });
-
-    console.log("📧 Email sent:", result.body.Messages[0].Status);
   } catch (err) {
-    console.error("❌ Mailjet send error:", err.message);
+    res.status(500).json({ error: err.message });
   }
-}
+});
+
+
+// -----------------------------
+// CHECK INVOICE (JSON-based)
+// -----------------------------
+app.post("/checkInvoice", async (req, res) => {
+  try {
+    const { invoiceJson } = req.body;
+    if (!invoiceJson)
+      return res.status(400).json({ error: "Missing invoiceJson" });
+
+    const output = checkInvoice(invoiceJson);
+    res.json(output);
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// -----------------------------
+// SERVER START
+// -----------------------------
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`✅ Invoice Checker running on port ${PORT}`);
+});
