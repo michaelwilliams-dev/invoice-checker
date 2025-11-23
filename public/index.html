@@ -1,236 +1,139 @@
-
-<!--
-AIVS CIS Compliance Checker · HTML Frontend
-ISO Timestamp: 2025-11-11T22:55:00Z
-Author: AIVS Software Limited
-Brand Colour: #4e65ac
-Description:
-Single-step upload + automatic AI compliance report generation.
--->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>AIVS CIS/VAT Compliance Checker</title>
-<link rel="stylesheet" href="https://unpkg.com/dropzone@5/dist/min/dropzone.min.css">
+  <meta charset="UTF-8" />
+  <title>AIVS Invoice Checker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<style>
-:root { --aivs-blue:#4e65ac; }
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial;
+      background: #f5f7fb;
+      margin: 0;
+      padding: 40px;
+      color: #222;
+    }
 
-body{
-font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-background:#fafafa;
-color:#222;
-margin:0;
-padding:20px 40px;
-}
+    h1 {
+      text-align: center;
+      color: #4e65ac;
+      margin-bottom: 20px;
+    }
 
-h1.page-title{
-text-align:center;
-color:var(--aivs-blue);
-font-size:1.8em;
-margin-bottom:24px;
-font-weight:600;
-border-bottom:2px solid var(--aivs-blue);
-padding-bottom:6px;
-}
+    #dropzone {
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 40px;
+      border: 3px dashed #4e65ac;
+      border-radius: 12px;
+      text-align: center;
+      background: #fff;
+      color: #4e65ac;
+      font-size: 20px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
 
-label{
-display:block;
-margin-top:12px;
-margin-bottom:6px;
-font-weight:600;
-color:var(--aivs-blue);
-}
-select,input{
-font-family:inherit;
-}
-select{
-width:260px;
-padding:8px 10px;
-border:1px solid var(--aivs-blue);
-border-radius:0;
-background:#fff;
-color:var(--aivs-blue);
-font-weight:600;
-font-size:14px;
-}
-select:focus,select:hover{
-border-color:var(--aivs-blue);
-box-shadow:0 0 0 1px var(--aivs-blue) inset;
-outline:none;
-}
+    #dropzone.dragover {
+      background: #e8edfb;
+    }
 
-.dropzone{
-border:3px solid var(--aivs-blue);
-border-radius:0;
-background:#fff;
-margin-top:25px;
-min-height:180px;
-color:var(--aivs-blue);
-font-weight:700;
-position:relative;
-text-transform:uppercase;
-letter-spacing:.6px;
-}
-.dropzone .dz-preview { display:none !important; }
-.dropzone .dz-button{
-background:var(--aivs-blue);
-color:#fff;
-border:none;
-border-radius:0;
-padding:14px 34px;
-cursor:pointer;
-font-size:16px;
-}
-.dropzone .dz-button:hover{ background:#3c5399; }
+    #results {
+      width: 100%;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      font-size: 16px;
+      white-space: pre-wrap;
+    }
 
-#actors{
-background:#fff;
-border:2px solid var(--aivs-blue);
-border-radius:0;
-padding:16px;
-margin-top:10px;
-}
-.actor{padding:10px;border-bottom:1px solid #ddd;}
-.actor span{color:var(--aivs-blue);font-weight:bold;}
-
-#aivs-footer{
-margin-top:30px;
-text-align:center;
-font-size:12px;
-color:#555;
-border-top:1px solid #e7ebf3;
-padding-top:10px;
-}
-#aivs-footer div{margin-top:4px;color:#777;}
-</style>
+    .label {
+      color: #4e65ac;
+      font-weight: 600;
+      margin-top: 12px;
+    }
+  </style>
 </head>
 
 <body>
-<h1 class="page-title">AIVS CIS/VAT Compliance Checker</h1>
 
-<!-- ===== VAT / CIS SETTINGS ===== -->
-<!-- ===== VAT / CIS SETTINGS + EMAILS ===== -->
-<form id="preQuestions">
-<label>Project type (VAT category):</label>
-<select id="vatCategory" name="vatCategory">
-<option value="standard-20">Standard 20%</option>
-<option value="reduced-5">Reduced 5%</option>
-<option value="zero-rated-new-build">Zero-rated (new build)</option>
-<option value="no-vat">No VAT (outside scope)</option>
-</select>
+  <h1>AIVS Invoice Checker</h1>
 
-<label>End user/intermediary declaration on file?</label>
-<select id="endUserConfirmed" name="endUserConfirmed">
-<option value="false">No</option>
-<option value="true">Yes</option>
-</select>
+  <div id="dropzone">Drop Invoice PDF Here<br><small>(or click to select)</small></div>
 
-<label>Subcontractor CIS rate:</label>
-<select id="cisRate" name="cisRate">
-<option value="20">20%</option>
-<option value="30">30%</option>
-<option value="0">Gross payment status (0%)</option>
-</select>
+  <div id="results" style="display:none;"></div>
 
-<label>Party role:</label>
-<select id="partyRole" name="partyRole">
-<option value="supplier">Supplier</option>
-<option value="customer">Customer</option>
-</select>
+<script>
+const dropzone = document.getElementById("dropzone");
+const results = document.getElementById("results");
 
-  <!-- ===== EMAIL INPUTS (now inside the form under dropdowns) ===== -->
-  <div id="emailSection" style="margin-top:25px;">
-    <label for="userEmail"
-      style="display:block;margin-bottom:8px;font-weight:600;color:var(--aivs-blue);">
-      Email set addresses before loading PDF (for report copies - example invoice not included):
-    </label>
+dropzone.addEventListener("click", () => {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "application/pdf";
+  input.onchange = () => uploadFile(input.files[0]);
+  input.click();
+});
 
-    <input type="email" id="userEmail" name="userEmail" placeholder="User email"
-      style="width:400px;padding:8px 10px;border:1.5px solid var(--aivs-blue);
-      border-radius:0;background:#fff;color:#222;font-size:14px;font-weight:500;
-      margin-bottom:10px;display:block;">
+dropzone.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  dropzone.classList.add("dragover");
+});
 
-    <input type="email" id="emailCopy1" name="emailCopy1" placeholder="Copy to Manager (optional)"
-      style="width:400px;padding:8px 10px;border:1.5px solid var(--aivs-blue);
-      border-radius:0;background:#fff;color:#222;font-size:14px;font-weight:500;
-      margin-bottom:10px;display:block;">
+dropzone.addEventListener("dragleave", () => {
+  dropzone.classList.remove("dragover");
+});
 
-    <input type="email" id="emailCopy2" name="emailCopy2" placeholder="Copy to Compliance (optional)"
-      style="width:400px;padding:8px 10px;border:1.5px solid var(--aivs-blue);
-      border-radius:0;background:#fff;color:#222;font-size:14px;font-weight:500;
-      display:block;">
-  </div>
+dropzone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dropzone.classList.remove("dragover");
 
-</form>
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
 
-<!-- ===== INVOICE UPLOAD ===== -->
-<form action="/check_invoice" class="dropzone" id="invoiceDrop">
-<div class="dz-message">📄 Drop file here to upload invoice - accepted files: pdfs</div>
-</form>
-<button id="clearResultsBtn"
-style="display:none;background:#4e65ac;color:#fff;border:none;
- border-radius:0;padding:10px 26px;font-size:15px;font-weight:600;
- margin-top:16px;cursor:pointer;">
-✖ Clear Results
-</button>
-<!-- ===== EMAIL INPUTS (outside Dropzone) ===== -->
-<div id="emailSection" style="margin-top:25px;">
-  <label for="userEmail"
-    style="display:block;margin-bottom:8px;font-weight:600;color:var(--aivs-blue);">
-    Email set addresses before loading PDF (for report copies - example invoice not incuded):
-  </label>
+  uploadFile(file);
+});
 
-  <input type="email" id="userEmail" name="userEmail" placeholder="User email"
-    style="width:400px;padding:8px 10px;border:1.5px solid var(--aivs-blue);
-    border-radius:0;background:#fff;color:#222;font-size:14px;font-weight:500;
-    box-sizing:border-box;margin-bottom:10px;display:block;
-    box-shadow:0 0 0 1px rgba(78,101,172,0.1);">
+async function uploadFile(file) {
+  results.style.display = "block";
+  results.textContent = "⏳ Uploading and processing invoice…";
 
-  <input type="email" id="emailCopy1" name="emailCopy1" placeholder="Copy to Manager (optional)"
-    style="width:400px;padding:8px 10px;border:1.5px solid var(--aivs-blue);
-    border-radius:0;background:#fff;color:#222;font-size:14px;font-weight:500;
-    box-sizing:border-box;margin-bottom:10px;display:block;
-    box-shadow:0 0 0 1px rgba(78,101,172,0.1);">
+  const formData = new FormData();
+  formData.append("file", file);
 
-  <input type="email" id="emailCopy2" name="emailCopy2" placeholder="Copy to Compliance (optional)"
-    style="width:400px;padding:8px 10px;border:1.5px solid var(--aivs-blue);
-    border-radius:0;background:#fff;color:#222;font-size:14px;font-weight:500;
-    box-sizing:border-box;display:block;
-    box-shadow:0 0 0 1px rgba(78,101,172,0.1);">
-</div>
+  try {
+    const res = await fetch("/uploadInvoice", {
+      method: "POST",
+      body: formData
+    });
 
-<!-- ===== ACTION BUTTONS ===== -->
-<!--  
-<button id="clearResultsBtn"
-  style="display:none;background:var(--aivs-blue);color:#fff;border:none;
-  border-radius:0;padding:10px 26px;font-size:15px;font-weight:600;
-  margin-top:16px;cursor:pointer;">
-  ✖ Clear Results
-</button>
+    const data = await res.json();
 
--->
-<!-- <button id="sendEmailBtn"
-  style="background:var(--aivs-blue);color:#fff;border:none;border-radius:0;
-  padding:10px 26px;font-size:15px;font-weight:600;margin-top:12px;cursor:pointer;">
-  📧 Send to these emails
-</button> -->
+    if (!data.success) {
+      results.textContent = "❌ Error: " + data.error;
+      return;
+    }
 
-<!-- ===== OUTPUT ===== -->
-<div id="actors"></div>
+    const extracted = JSON.stringify(data.extracted, null, 2);
+    const checked = JSON.stringify(data.results, null, 2);
 
-<!-- ===== FOOTER ===== -->
-<div id="aivs-footer">
-<div>© AIVS Software Limited 2025 · All rights reserved.</div>
-  <div>This report and invoice layout are generated by the AIVS CIS Compliance Checker for internal advisory use. It does not constitute professional accounting or legal advice.</div>
-  <div>This report and invoice layout are generated by the AIVS CIS/VAT Compliance Checker for internal advisory use. It does not constitute professional accounting or legal advice.</div>
-<div>Users should seek appropriate professional or HMRC guidance before acting on any automated output. AIVS Software Limited accepts no liability for reliance on this content without independent verification.</div>
-<div style="font-style:italic;">Prepared for internal management advisory purposes only · Not for external distribution.</div>
-</div>
+    results.innerHTML = `
+      <div class="label">Extracted (Docling JSON):</div>
+      <pre>${extracted}</pre>
 
-<script src="https://unpkg.com/dropzone@5/dist/min/dropzone.min.js"></script>
-<script src="invoice_check.js"></script>
+      <div class="label">Checker Output:</div>
+      <pre>${checked}</pre>
+    `;
+
+  } catch (err) {
+    results.textContent = "❌ Server error: " + err.message;
+  }
+}
+</script>
+
 </body>
 </html>
