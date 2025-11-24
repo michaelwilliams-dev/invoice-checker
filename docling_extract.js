@@ -1,7 +1,8 @@
+
 // ISO Timestamp: 2025-11-24T12:00:00Z
 /**
  * docling_extract.js – AIVS Invoice Extractor (HARDENED VERSION)
- * Prevents crashes on malformed PDFs and always returns a stable JSON object.
+ * Stops crashes on malformed PDFs and always returns a stable JSON object.
  */
 
 import { readFile } from "fs/promises";
@@ -22,9 +23,9 @@ export async function extractInvoice(filePath) {
     } catch (pdfErr) {
       console.warn("⚠️ Primary PDF extract failed:", pdfErr.message);
 
-      // If file is actually an image disguised as PDF → treat differently
       const fileExt = filePath.toLowerCase();
 
+      // Image masquerading as PDF:
       if (
         fileExt.endsWith(".jpg") ||
         fileExt.endsWith(".jpeg") ||
@@ -38,25 +39,23 @@ export async function extractInvoice(filePath) {
         };
       }
 
-      // If the PDF is broken beyond repair
+      // Proper PDF but broken
       return {
         status: "pdf_error",
         error: "Invalid or corrupted PDF structure. Unable to extract text.",
       };
     }
 
-    // Run analysis
+    // Step 2 – Analyse
     const analyzer = new DocumentAnalyzer();
     const analysed = analyzer.analyze(model);
 
-    // Export JSON
+    // Step 3 – Export JSON
     const exporter = new JsonExporter();
     const json = exporter.export(analysed);
 
-    // Guarantee stable structure
     return {
       status: "ok",
-      source: filePath,
       extracted: json,
     };
   } catch (err) {
