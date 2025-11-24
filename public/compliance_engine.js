@@ -1,121 +1,142 @@
-// ISO Timestamp: 2025-11-24T12:30:00Z
+// ISO Timestamp: 2025-11-24T16:30:00Z
 /**
- * invoice_checker.js – AIVS CIS / VAT Rules Engine
- * This file receives structured JSON from Docling and applies:
- *  - VAT logic
- *  - CIS logic
- *  - Wording checks
- *  - Corrected invoice formatting
+ * compliance_engine.js – AIVS CIS / VAT Compliance Logic
+ * Applies all CIS/VAT rules to Docling JSON and generates:
+ *  - VAT check result
+ *  - CIS check result
+ *  - Required wording
+ *  - Summary text
+ *  - Corrected invoice preview (SCREEN ONLY)
  */
 
-export function checkInvoice(docJson) {
+export function runComplianceChecks(docJson) {
   try {
-    // ------------------------------------------------------------
-    // 1. Normalise input (Docling JSON layout varies)
-    // ------------------------------------------------------------
+    // Convert the raw Docling JSON to searchable text
     const text = JSON.stringify(docJson).toLowerCase();
 
-    // Extract scan of values (very basic for now)
+    /* ----------------------------------------------------------
+       1. DETECTION LAYER
+    ---------------------------------------------------------- */
     const detected = {
       hasLabour: text.includes("labour") || text.includes("labour only"),
-      hasMaterials: text.includes("materials") || text.includes("material"),
-      mentionsReverseCharge:
-        text.includes("reverse charge") || text.includes("vat act 1994"),
-      mentionsCis20: text.includes("20%") && text.includes("cis"),
+      hasMaterials: text.includes("material"),
+      reverseCharge:
+        text.includes("reverse charge") ||
+        text.includes("vat act 1994"),
+      cisHint:
+        text.includes("cis") ||
+        text.includes("construction industry scheme"),
+      domestic:
+        text.includes("domestic") ||
+        text.includes("homeowner"),
+      commercial:
+        text.includes("commercial") ||
+        text.includes("contractor"),
+      newBuild:
+        text.includes("new build") ||
+        text.includes("new-build")
     };
 
-    // ------------------------------------------------------------
-    // 2. VAT Logic (simple rule engine for now)
-    // ------------------------------------------------------------
-    let vat_check = "Unable to determine VAT treatment.";
+    /* ----------------------------------------------------------
+       2. VAT LOGIC
+    ---------------------------------------------------------- */
+    let vat_check = "";
     let required_wording = "";
     let vatSummary = "";
 
-    if (detected.mentionsReverseCharge) {
+    if (detected.reverseCharge) {
       vat_check = "Reverse charge VAT wording detected.";
       required_wording =
-        "This invoice must not charge VAT. Customer to account for VAT to HMRC (VAT Act 1994 Section 55A).";
-      vatSummary = "Reverse charge rules appear to apply.";
-    } else if (detected.hasLabour && !detected.hasMaterials) {
-      vat_check = "Likely labour-only supply. Usually subject to reverse charge for CIS-registered customers.";
-      required_wording =
-        "Check reverse charge wording: 'Reverse charge: customer to account for VAT to HMRC'.";
-      vatSummary = "Possible reverse-charge labour supply.";
+        "Reverse charge applies: ‘Customer to account for VAT to HMRC (VAT Act 1994 s55A)’";
+      vatSummary = "Reverse charge identified.";
+    } else if (detected.hasLabour && detected.commercial) {
+      vat_check = "Probable reverse charge labour supply to a VAT-registered contractor.";
+      required_wording = "Reverse charge may apply. Check the customer VAT number.";
+      vatSummary = "Commercial labour supply.";
+    } else if (detected.domestic) {
+      vat_check = "Domestic customer — normal VAT rules apply.";
+      vatSummary = "Domestic supply, no reverse charge.";
     } else {
-      vat_check = "Standard or reduced VAT. Please confirm 20%, 5% or 0% manually.";
-      vatSummary = "Conventional VAT supply.";
+      vat_check = "Standard or reduced VAT — unable to confirm from text.";
+      vatSummary = "VAT unclear.";
     }
 
-    // ------------------------------------------------------------
-    // 3. CIS Logic (simple rule engine)
-    // ------------------------------------------------------------
-    let cis_check = "Unable to determine CIS status.";
+    /* ----------------------------------------------------------
+       3. CIS LOGIC
+    ---------------------------------------------------------- */
+    let cis_check = "";
 
     if (detected.hasLabour && !detected.hasMaterials) {
-      cis_check =
-        "Labour-only supply: CIS deduction normally applies unless supplier has Gross Payment Status.";
+      cis_check = "Labour-only: CIS likely applies unless gross payment status.";
     } else if (detected.hasLabour && detected.hasMaterials) {
-      cis_check =
-        "Labour + materials: CIS applies to labour portion only. Materials must be listed separately.";
+      cis_check = "Labour + materials: CIS applies to labour only.";
     } else if (detected.hasMaterials && !detected.hasLabour) {
-      cis_check = "Materials-only: CIS should NOT be applied.";
+      cis_check = "Materials only: CIS should NOT be applied.";
     } else {
-      cis_check = "Cannot determine CIS from extracted document.";
+      cis_check = "Unable to determine CIS applicability.";
     }
 
-    // ------------------------------------------------------------
-    // 4. Summary
-    // ------------------------------------------------------------
+    /* ----------------------------------------------------------
+       4. SUMMARY
+    ---------------------------------------------------------- */
     const summary = `
-      VAT Summary: ${vatSummary}
-      CIS Summary: ${cis_check}
-      Recommended wording: ${required_wording}
+VAT Summary: ${vatSummary}
+CIS Summary: ${cis_check}
+Required Wording: ${required_wording || "None detected"}
     `.trim();
 
-    // ------------------------------------------------------------
-    // 5. Generate a corrected invoice layout (simple placeholder)
-    // ------------------------------------------------------------
+    /* ----------------------------------------------------------
+       5. DRAFT INVOICE PREVIEW (SCREEN ONLY, NOT EMAILED)
+    ---------------------------------------------------------- */
     const corrected_invoice = `
       <table style="width:100%; border-collapse:collapse; font-size:13px;">
         <thead>
           <tr style="background:#f3f3f3; font-weight:bold;">
             <td>Description</td>
-            <td>Qty</td>
-            <td>Unit Price (£)</td>
+            <td>Category</td>
+            <td>Amount (£)</td>
             <td>VAT Rate</td>
-            <td>Line Total (£)</td>
+            <td>Notes</td>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>Example labour line</td>
-            <td>1</td>
+            <td>Labour (example)</td>
+            <td>Labour</td>
             <td>0.00</td>
-            <td>Reverse Charge</td>
+            <td>${detected.reverseCharge ? "Reverse Charge" : "20%"}</td>
+            <td>Screen-only preview</td>
+          </tr>
+          <tr>
+            <td>Materials (example)</td>
+            <td>Materials</td>
             <td>0.00</td>
+            <td>20%</td>
+            <td>Screen-only preview</td>
           </tr>
         </tbody>
       </table>
     `;
 
-    // ------------------------------------------------------------
-    // 6. Return full structure
-    // ------------------------------------------------------------
+    /* ----------------------------------------------------------
+       6. RETURN FULL REPORT OBJECT
+    ---------------------------------------------------------- */
     return {
       vat_check,
       cis_check,
       required_wording,
       summary,
-      corrected_invoice,
+      corrected_invoice
     };
+
   } catch (err) {
-    console.error("❌ Invoice checker failed:", err);
+    console.error("❌ compliance_engine.js error:", err);
     return {
       vat_check: "Error",
       cis_check: "Error",
       required_wording: "",
-      summary: "Checker failure — see logs.",
-      corrected_invoice: "",
+      summary: "Compliance engine failed.",
+      corrected_invoice: ""
     };
   }
 }
