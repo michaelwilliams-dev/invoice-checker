@@ -1,177 +1,121 @@
+// ISO Timestamp: 2025-11-24T12:30:00Z
 /**
- * AIVS Invoice Compliance Checker · Frontend Logic
- * ISO Timestamp: 2025-11-13T08:00:00Z
- * Author: AIVS Software Limited
- * Brand Colour: #4e65ac
- * Description:
- * Compact 80 px upload box showing its own live messages,
- * then replacing them with Uploader / Parser info once done.
- * Automatically sends emails if fields are filled.
- * Clears screen by refreshing the page.
+ * invoice_checker.js – AIVS CIS / VAT Rules Engine
+ * This file receives structured JSON from Docling and applies:
+ *  - VAT logic
+ *  - CIS logic
+ *  - Wording checks
+ *  - Corrected invoice formatting
  */
 
-Dropzone.autoDiscover = false;
+export function checkInvoice(docJson) {
+  try {
+    // ------------------------------------------------------------
+    // 1. Normalise input (Docling JSON layout varies)
+    // ------------------------------------------------------------
+    const text = JSON.stringify(docJson).toLowerCase();
 
-const dz = new Dropzone("#invoiceDrop", {
-  url: "/check_invoice",
-  maxFiles: 1,
-  maxFilesize: 10,
-  acceptedFiles: ".pdf,.jpg,.png,.json",
-  autoProcessQueue: true,
-  addRemoveLinks: false,
-  dictDefaultMessage: "📄 Drop file here to upload invoice - accepted files: pdfs",
+    // Extract scan of values (very basic for now)
+    const detected = {
+      hasLabour: text.includes("labour") || text.includes("labour only"),
+      hasMaterials: text.includes("materials") || text.includes("material"),
+      mentionsReverseCharge:
+        text.includes("reverse charge") || text.includes("vat act 1994"),
+      mentionsCis20: text.includes("20%") && text.includes("cis"),
+    };
 
-  init: function () {
-    const dzInstance = this;
-    const dzElement  = document.getElementById("invoiceDrop");
-    const actorsDiv  = document.getElementById("actors");
-    const clearBtn   = document.getElementById("clearResultsBtn");
+    // ------------------------------------------------------------
+    // 2. VAT Logic (simple rule engine for now)
+    // ------------------------------------------------------------
+    let vat_check = "Unable to determine VAT treatment.";
+    let required_wording = "";
+    let vatSummary = "";
 
-    // --- Clear Results button logic -------------------------------------
-    if (clearBtn) {
-      clearBtn.addEventListener("click", () => {
-        window.location.replace(window.location.pathname); // 🔄 full hard reload wipes all states
-      });
+    if (detected.mentionsReverseCharge) {
+      vat_check = "Reverse charge VAT wording detected.";
+      required_wording =
+        "This invoice must not charge VAT. Customer to account for VAT to HMRC (VAT Act 1994 Section 55A).";
+      vatSummary = "Reverse charge rules appear to apply.";
+    } else if (detected.hasLabour && !detected.hasMaterials) {
+      vat_check = "Likely labour-only supply. Usually subject to reverse charge for CIS-registered customers.";
+      required_wording =
+        "Check reverse charge wording: 'Reverse charge: customer to account for VAT to HMRC'.";
+      vatSummary = "Possible reverse-charge labour supply.";
+    } else {
+      vat_check = "Standard or reduced VAT. Please confirm 20%, 5% or 0% manually.";
+      vatSummary = "Conventional VAT supply.";
     }
 
-    // compact fixed height
-    dzElement.style.height = "80px";
-    dzElement.style.minHeight = "80px";
-    dzElement.style.position = "relative";
-    dzElement.style.overflow = "hidden";
+    // ------------------------------------------------------------
+    // 3. CIS Logic (simple rule engine)
+    // ------------------------------------------------------------
+    let cis_check = "Unable to determine CIS status.";
 
-    // create inner message layer
-    const overlay = document.createElement("div");
-    overlay.id = "uploadOverlay";
-    overlay.style.cssText = `
-      position:absolute;
-      inset:0;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      background:#fff;
-      color:#4e65ac;
-      font-weight:600;
-      font-size:14px;
-      text-align:center;
-      z-index:10;
-      transition:opacity 0.3s ease;
+    if (detected.hasLabour && !detected.hasMaterials) {
+      cis_check =
+        "Labour-only supply: CIS deduction normally applies unless supplier has Gross Payment Status.";
+    } else if (detected.hasLabour && detected.hasMaterials) {
+      cis_check =
+        "Labour + materials: CIS applies to labour portion only. Materials must be listed separately.";
+    } else if (detected.hasMaterials && !detected.hasLabour) {
+      cis_check = "Materials-only: CIS should NOT be applied.";
+    } else {
+      cis_check = "Cannot determine CIS from extracted document.";
+    }
+
+    // ------------------------------------------------------------
+    // 4. Summary
+    // ------------------------------------------------------------
+    const summary = `
+      VAT Summary: ${vatSummary}
+      CIS Summary: ${cis_check}
+      Recommended wording: ${required_wording}
+    `.trim();
+
+    // ------------------------------------------------------------
+    // 5. Generate a corrected invoice layout (simple placeholder)
+    // ------------------------------------------------------------
+    const corrected_invoice = `
+      <table style="width:100%; border-collapse:collapse; font-size:13px;">
+        <thead>
+          <tr style="background:#f3f3f3; font-weight:bold;">
+            <td>Description</td>
+            <td>Qty</td>
+            <td>Unit Price (£)</td>
+            <td>VAT Rate</td>
+            <td>Line Total (£)</td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Example labour line</td>
+            <td>1</td>
+            <td>0.00</td>
+            <td>Reverse Charge</td>
+            <td>0.00</td>
+          </tr>
+        </tbody>
+      </table>
     `;
-    overlay.textContent = "📄 Drop file here to upload invoice - accepted files: pdfs";
-    dzElement.appendChild(overlay);
 
-    // ---- sending --------------------------------------------------------
-dzInstance.on("sending", (file, xhr, formData) => {
-  overlay.innerHTML = `⏳ Uploading<br>${file.name}`;
-  formData.append("vatCategory", document.getElementById("vatCategory").value);
-  formData.append("endUserConfirmed", document.getElementById("endUserConfirmed").value);
-  formData.append("cisRate", document.getElementById("cisRate").value);
-
-  // ✅ NEW: Supplier / Customer selector
-  const partyRole = document.getElementById("partyRole").value;
-  let roleText = "";
-  if (partyRole === "supplier") {
-    roleText = "This is a supplier of services.";
-  } else {
-    roleText = "This is a customer for services.";
+    // ------------------------------------------------------------
+    // 6. Return full structure
+    // ------------------------------------------------------------
+    return {
+      vat_check,
+      cis_check,
+      required_wording,
+      summary,
+      corrected_invoice,
+    };
+  } catch (err) {
+    console.error("❌ Invoice checker failed:", err);
+    return {
+      vat_check: "Error",
+      cis_check: "Error",
+      required_wording: "",
+      summary: "Checker failure — see logs.",
+      corrected_invoice: "",
+    };
   }
-  formData.append("partyRole", partyRole);
-  formData.append("roleText", roleText);
-
-  // ✅ existing: include email addresses automatically
-  formData.append("userEmail", document.getElementById("userEmail").value);
-  formData.append("emailCopy1", document.getElementById("emailCopy1").value);
-  formData.append("emailCopy2", document.getElementById("emailCopy2").value);
-});
-
-    // ---- success --------------------------------------------------------
-    dzInstance.on("success", (file, response) => {
-      overlay.innerHTML = `
-        <div><strong style="color:#4e65ac;">Uploader:</strong> ${file.name}</div>
-        <div><strong style="color:#4e65ac;">Parser:</strong> ${
-          response.parserNote || "Invoice parsed successfully."
-        }</div>
-      `;
-
-      let formattedAI = "";
-      const r = response.aiReply || response;
-
-      if (r.vat_check || r.cis_check || r.required_wording || r.summary) {
-        formattedAI = `
-          <div style="padding:8px;">
-            <h3 style="color:#4e65ac;font-size:16px;font-weight:600;margin-bottom:8px;">
-              AI Compliance Report
-            </h3>
-            <p><strong>VAT / DRC Check:</strong><br>${r.vat_check || "—"}</p>
-            <p><strong>CIS Check:</strong><br>${r.cis_check || "—"}</p>
-            <p><strong>Required Wording:</strong><br>${r.required_wording || "—"}</p>
-            <p><strong>Summary:</strong><br>${r.summary || "—"}</p>
-          </div>`;
-      }
-
-      if (r.corrected_invoice) {
-        formattedAI += `
-          <div style="margin-top:12px;">
-            <h4 style="color:#4e65ac;margin-bottom:6px;">Corrected Invoice Preview</h4>
-            <div style="border:1px solid #e7ebf3;padding:10px;background:#f9f9fb;">
-              <div style="
-                text-align:center;
-                font-weight:700;
-                font-size:16px;
-                color:#c0392b;
-                margin-bottom:10px;
-                text-transform:uppercase;">
-                TAX INVOICE EXAMPLE: NOT FOR USE
-              </div>
-              ${r.corrected_invoice}
-            </div>
-          </div>`;
-      }
-
-      if (!formattedAI) {
-        formattedAI = `<pre style="white-space:pre-wrap;font-size:13px;color:#333;">
-${JSON.stringify(response, null, 2)}
-</pre>`;
-      }
-
-      actorsDiv.innerHTML = `
-        ${formattedAI}
-        <div class="actor" style="margin-top:10px;">
-          <span style="color:#4e65ac;font-weight:600;">Response Time:</span>
-          ${response.timestamp || "—"}
-        </div>`;
-
-      if (clearBtn) clearBtn.style.display = "inline-block";
-    });
-
-    // ---- error ----------------------------------------------------------
-    dzInstance.on("error", (file, err) => {
-      overlay.innerHTML = `<span style="color:#c0392b;">❌ Upload failed – ${err}</span>`;
-    });
-
-    // ---- enforce single file + auto-reset with message ------------------
-    dzInstance.on("addedfile", file => {
-      const existingReport = document.getElementById("actors")?.innerHTML.trim();
-      if (existingReport && existingReport.length > 0) {
-        const notice = document.createElement("div");
-        notice.style.cssText = `
-          position:absolute; inset:0;
-          background:rgba(255,255,255,0.95);
-          display:flex; flex-direction:column;
-          align-items:center; justify-content:center;
-          font-size:15px; font-weight:600;
-          color:#4e65ac; z-index:20;
-        `;
-        notice.textContent = "🔄 Resetting for new upload…";
-        dzElement.appendChild(notice);
-
-        console.log("🔄 Auto-reset triggered by new file drop");
-        setTimeout(() => window.location.replace(window.location.pathname), 1200);
-        return false;
-      }
-
-      if (dzInstance.files.length > 1) dzInstance.removeFile(dzInstance.files[0]);
-    });
-  },
-});
+}
