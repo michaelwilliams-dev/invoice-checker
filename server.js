@@ -12,7 +12,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import { extractInvoice } from "./pdf_extract.js";
-import { checkInvoice } from "./invoice_checker.js";
+import { runComplianceChecks } from "./compliance_engine.js";
 
 import Mailjet from "node-mailjet";
 import { PDFDocument, StandardFonts } from "pdf-lib";
