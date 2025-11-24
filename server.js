@@ -11,7 +11,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import { extractInvoice } from "./docling_extract.js";
+import { extractInvoice } from "./pdf_extract.js";
 import { checkInvoice } from "./invoice_checker.js";
 
 import Mailjet from "node-mailjet";
