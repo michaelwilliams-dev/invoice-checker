@@ -12,8 +12,10 @@ export async function extractInvoice(filePath) {
     // Load PDF into buffer
     const data = fs.readFileSync(filePath);
 
-    // Load pdfjs-dist
-    const pdf = await pdfjsLib.getDocument({ data }).promise;
+    // FIX: pdfjs requires Uint8Array, not Buffer
+    const pdf = await pdfjsLib.getDocument({
+      data: new Uint8Array(data)
+    }).promise;
 
     let fullText = "";
 
