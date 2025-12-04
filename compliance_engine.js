@@ -3,7 +3,7 @@
  * compliance_engine.js – AIVS VAT/CIS Logic Engine (Simplified + HMRC-Aligned)
  */
 
-export function runComplianceChecks(raw) {
+ export function runComplianceChecks(raw) {
   try {
     const text = (raw || "").toLowerCase();
     const cleaned = raw.replace(/,/g, "").toLowerCase();
@@ -14,26 +14,24 @@ export function runComplianceChecks(raw) {
 
     const money = { net: 0, vat: 0, total: 0 };
 
-    // NET detection
+    // NET extraction
     const netMatch =
       cleaned.match(/subtotal[^0-9]*([0-9.]+)/) ||
       cleaned.match(/total\s*net[^0-9]*([0-9.]+)/);
 
     if (netMatch) money.net = parseFloat(netMatch[1]);
 
-    // VAT detection
+    // VAT extraction
     const vatMatch =
       cleaned.match(/vat[^\d]*([0-9]+\.[0-9]{2})/) ||
       cleaned.match(/vat\s*total[^\d]*([0-9]+\.[0-9]{2})/) ||
       cleaned.match(/vat\s*\n\s*([0-9]+\.[0-9]{2})/);
-
     if (vatMatch) money.vat = parseFloat(vatMatch[1]);
 
-    // TOTAL detection
+    // TOTAL extraction
     const totalMatch =
       cleaned.match(/total[^0-9]*([0-9.]+)/) ||
       cleaned.match(/amount\s*due[^0-9]*([0-9.]+)/);
-
     if (totalMatch) money.total = parseFloat(totalMatch[1]);
     else money.total = money.net + money.vat;
 
@@ -60,8 +58,8 @@ export function runComplianceChecks(raw) {
     const materialSignals = [
       "material", "materials", "timber", "plasterboard", "screws",
       "fixings", "paint", "consumables", "adhesive", "sealant",
-      "tiles", "roofing felt", "upvc", "copper pipe", "boiler",
-      "cylinder", "lighting unit", "accessories"
+      "tiles", "roofing felt", "upvc", "copper pipe",
+      "boiler", "cylinder", "lighting unit", "accessories"
     ];
 
     const hasLabour = labourSignals.some(t => text.includes(t));
@@ -69,30 +67,62 @@ export function runComplianceChecks(raw) {
 
 
     /* ----------------------------------------------------------
-       2. VAT LOGIC
+       2. VAT LOGIC – detect mistakes, not just state
     ---------------------------------------------------------- */
 
     let vat_check = "";
     let required_wording = "";
     let vatSummary = "";
 
+    // Reverse charge ONLY if wording actually present
     const reverseCharge =
       text.includes("reverse charge") ||
-      text.includes("domestic reverse charge") ||
-      text.includes("vat act 1994") ||
-      text.includes("section 55a");
+      text.includes("domestic reverse charge");
 
-    if (reverseCharge) {
-      vat_check = "Reverse charge VAT wording detected.";
+    const vatAmount = money.vat || 0;
+
+    // Contractor likely misunderstanding DRC:
+    // Labour-only + VAT charged + no RC wording
+    const likelyDRCMisunderstanding =
+      hasLabour && !hasMaterials && !reverseCharge && vatAmount > 0;
+
+    // CASE 1 – RC wording present AND VAT charged → WRONG
+    if (reverseCharge && vatAmount > 0) {
+      vat_check =
+        `Reverse charge wording detected, but £${vatAmount.toFixed(2)} VAT has been charged on the invoice. ` +
+        `Under the domestic reverse charge the supplier should NOT charge VAT – the customer accounts for it.`;
       required_wording =
         "Reverse charge applies: Customer to account for VAT to HMRC (VAT Act 1994 s55A).";
-      vatSummary = "Reverse charge explicitly indicated.";
-    } else if (money.vat > 0) {
-      vat_check = `Standard VAT charged: £${money.vat.toFixed(2)}`;
-      vatSummary = "Standard-rated VAT invoice.";
+      vatSummary =
+        "Reverse charge wording present, but VAT has been added – invoice likely incorrect.";
+
+    // CASE 2 – Correct RC: wording present + no VAT
+    } else if (reverseCharge && vatAmount === 0) {
+      vat_check =
+        "Reverse charge wording detected and no VAT charged – this is consistent with domestic reverse charge.";
+      required_wording =
+        "Reverse charge applies: Customer to account for VAT to HMRC (VAT Act 1994 s55A).";
+      vatSummary = "Correct reverse charge supply.";
+
+    // CASE 3 – No RC wording + VAT charged → standard or misunderstanding
+    } else if (!reverseCharge && vatAmount > 0) {
+
+      if (likelyDRCMisunderstanding) {
+        vat_check =
+          `Standard VAT of £${vatAmount.toFixed(2)} has been charged on a labour-only supply with no materials and no reverse charge wording. ` +
+          `This strongly suggests the contractor does NOT understand the domestic reverse charge rules.`;
+        vatSummary =
+          "Likely contractor misunderstanding of reverse charge on a labour-only supply.";
+      } else {
+        vat_check = `Standard VAT charged: £${vatAmount.toFixed(2)} (no reverse charge wording detected).`;
+        vatSummary = "Standard-rated VAT invoice.";
+      }
+
+    // CASE 4 – No VAT + no RC → zero-rated or needs manual review
     } else {
-      vat_check = "Zero-rated or unclear VAT treatment.";
-      vatSummary = "No VAT detected.";
+      vat_check =
+        "No VAT charged and no reverse charge wording detected – supply may be zero-rated or incomplete.";
+      vatSummary = "No VAT detected; manual review recommended.";
     }
 
 
@@ -114,7 +144,7 @@ export function runComplianceChecks(raw) {
 
 
     /* ----------------------------------------------------------
-       4. SUMMARY TEXT
+       4. SUMMARY TEXT (human explanation)
     ---------------------------------------------------------- */
 
     const summary = `
@@ -130,10 +160,10 @@ Required Wording: ${required_wording || "None required"}
 
 
     /* ----------------------------------------------------------
-       5. CLEAN SUMMARY INVOICE (OPTION A)
+       5. CLEAN SUMMARY INVOICE (SCREEN ONLY)
     ---------------------------------------------------------- */
 
-    const cisRate = 0.20; // fixed for now
+    const cisRate = 0.20; 
     const cisDeduction = hasLabour ? (money.net * cisRate).toFixed(2) : "0.00";
     const totalDue = (money.total - parseFloat(cisDeduction)).toFixed(2);
 
